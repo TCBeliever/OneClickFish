@@ -1,0 +1,20 @@
+## Interface: 120100
+## Title: |cff66ccffOneClick|rFish
+## Notes: One key casts Fishing and loots the bobber. Pole equipped from your bags, instant loot, quieter music while the line is out, and a session HUD: catches, value, gold per hour.
+## Notes-zhTW: 一個按鍵拋竿與收竿。自動裝備魚竿、秒拾取、拋竿時壓低音樂，還有顯示漁獲、價值與每小時收益的 HUD。
+## Author: Venser
+## Version: 0.1.0
+## SavedVariables: OneClickFishDB
+## IconTexture: Interface\Icons\Trade_Fishing
+## Category: venMOD
+## AddonCompartmentFunc: OneClickFish_OnAddonCompartmentClick
+## OptionalDeps: Auctionator, TradeSkillMaster
+## X-License: MIT
+
+Locales.lua
+Skin.lua
+Button.lua
+Minimap.lua
+Core.lua
+HUD.lua
+Options.lua

@@ -1,0 +1,7 @@
+<Bindings>
+	<!-- Its own section in Key Bindings. The key itself only makes sure the override is in
+	     place (Core.lua, RefreshBinding): the addon re-points it to a cast or to Interact. -->
+	<Binding name="ONECLICKFISH_CAST" category="OneClickFish">
+		OneClickFish_Run()
+	</Binding>
+</Bindings>

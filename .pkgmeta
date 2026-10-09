@@ -1,0 +1,22 @@
+package-as: OneClickFish
+
+enable-nolib-creation: no
+
+ignore:
+  - README.md
+  - README.zhTW.md
+  - docs
+  - tests
+  - CHANGELOG.md
+  - CHANGELOG_LATEST.md
+  - deploy.bat
+  - .gitignore
+  - .pkgmeta
+  - .github
+
+# CHANGELOG_LATEST.md is written by the release workflow (newest section of
+# CHANGELOG.md). No trailing comment on the filename line: the packager's
+# YAML reader keeps it as part of the name.
+manual-changelog:
+  filename: CHANGELOG_LATEST.md
+  markup-type: markdown
