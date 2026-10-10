@@ -7,10 +7,17 @@ local L, Skin = ns.L, ns.Skin
 --
 --   [icon] OneClickFish Session           [Reset]
 --   ---------------------------------------------
---   Casts / catches / hr             12 / 11 / 48
+--   Casts 12   Catches 11   Catch/hr 48
 --   Est. value (Auctionator)                12.3g
---   Gold/hr · time                  52.1g · 14:12
+--   Gold/hr 52.1g   Time 14:12
 --   Lure                                    7:40   <- only with a lure picked
+--
+-- A row is one or more label-value pairs, a value right behind its label. A
+-- row of one has its value at the right edge. The rows of several share a
+-- grid: the label of each pair sits at its column's stop, and the last pair
+-- of a row hugs the right edge, so every row ends flush there. The stops
+-- are spread over the box's width and only ever move outwards, so the
+-- ticking numbers do not shift anything.
 --   ---------------------------------------------
 --   [i] Scalebelly Mackerel        6     8g 10s   <- what was caught, most first; hover for the item
 --   [i] Thousandbite Piranha       3     2g 05s
@@ -24,7 +31,8 @@ ns.HUD = HUD
 
 local PAD_X, PAD_Y = 10, 8
 local LINE_H  = 16
-local GAP     = 14   -- between columns
+local GAP     = 14   -- between columns, and between the pairs of a row
+local PAIR_GAP = 4   -- between a label and its value
 local MIN_W, MAX_W = 180, 320
 local ICON    = 14
 local BAR_H   = 3
@@ -36,7 +44,10 @@ local MAX_CATCHES = 8
 HUD.SCALE_MIN, HUD.SCALE_MAX, HUD.SCALE_STEP = 0.6, 1.8, 0.1
 HUD.IDLE_MIN, HUD.IDLE_MAX = 1, 30   -- minutes without a cast before the box goes
 
-local ROWS = { "fishing", "value", "rate", "lure" }   -- the lure row only with a lure picked
+-- the rows, each its pairs; the lure row only with a lure picked
+local ROWS = { { "casts", "catches", "perHour" }, { "value" }, { "gold", "time" }, { "lure" } }
+local COLS = 0   -- the grid's columns: as many as the widest row of pairs
+for _, keys in ipairs(ROWS) do if #keys > 1 then COLS = math.max(COLS, #keys) end end
 
 local frame
 
@@ -78,9 +89,12 @@ end
 local function Values(stats)
 	local left = ns.LureLeft()
 	return {
-		fishing = string.format("%d / %d / %.0f", stats.casts, stats.catches, stats.catchPerHour),
+		casts   = tostring(stats.casts),
+		catches = tostring(stats.catches),
+		perHour = string.format("%.0f", stats.catchPerHour),
 		value   = Money(stats.value),
-		rate    = Money(stats.goldPerHour) .. " · " .. Clock(stats.elapsed),
+		gold    = Money(stats.goldPerHour),
+		time    = Clock(stats.elapsed),
 		lure    = left > 0 and Clock(left) or Skin.Text("warn", L["LURE_none"]),
 	}
 end
@@ -253,14 +267,18 @@ local function CreateHUD()
 	-- the numbers
 	f.rows = {}
 	local top = PAD_Y + TITLE_H + RULE_GAP * 2 + 1
-	for i = 1, #ROWS do
+	for i, keys in ipairs(ROWS) do
 		local y = -(top + LINE_H * (i - 1)) - 1
-		local r = { label = Skin.Label(f, "", nil, "dim"), value = Skin.Label(f, "") }
-		r.label:SetPoint("TOPLEFT", PAD_X, y)
-		r.value:SetPoint("TOPRIGHT", -PAD_X, y)
-		r.value:SetJustifyH("RIGHT")
+		local r = { y = y, pairs = {} }
+		for j, key in ipairs(keys) do
+			local pair = { key = key, label = Skin.Label(f, "", nil, "dim"), value = Skin.Label(f, "") }
+			pair.value:SetJustifyH("RIGHT")
+			if #keys > 1 then pair.col = j < #keys and j or COLS end   -- the last pair in the last column
+			r.pairs[j] = pair
+		end
 		f.rows[i] = r
 	end
+	f.colW = {}   -- the grid's column widths, which only grow
 	f.rowsTop = top
 
 	-- the catches, under a line of their own
@@ -304,24 +322,32 @@ function HUD.Refresh()
 	frame.icon:SetTexture(ns.ProfessionIcon())
 	frame.title:SetText(Skin.Text("accent", "OneClick") .. "Fish " .. L["Session"])
 
-	-- the numbers: two columns, as wide as the widest of them
+	-- the numbers: the texts, measured; the grid's columns widen to fit
 	local values = Values(stats)
-	local labelW, valueW = 0, 0
+	local rowsW = 0
 	local shownRows = ns.db.settings.lure and #ROWS or #ROWS - 1
-	for i, key in ipairs(ROWS) do
-		local r = frame.rows[i]
-		if i <= shownRows then
-			local label = L["ROW_" .. key]
-			if key == "value" then label = string.format(label, stats.source or L["SRC_vendor"]) end   -- who priced it
-			r.label:SetText(label)
-			r.value:SetText(values[key])
-			labelW = math.max(labelW, r.label:GetStringWidth())
-			valueW = math.max(valueW, r.value:GetStringWidth())
-			r.label:Show(); r.value:Show()
-		else
-			r.label:Hide(); r.value:Hide()
+	for i, r in ipairs(frame.rows) do
+		for _, pair in ipairs(r.pairs) do
+			if i <= shownRows then
+				local label = L["ROW_" .. pair.key]
+				if pair.key == "value" then label = string.format(label, stats.source or L["SRC_vendor"]) end   -- who priced it
+				pair.label:SetText(label)
+				pair.value:SetText(values[pair.key])
+				local labelW, valueW = pair.label:GetStringWidth(), pair.value:GetStringWidth()
+				if pair.col then
+					frame.colW[pair.col] = math.max(frame.colW[pair.col] or 0, labelW + PAIR_GAP + valueW)
+				else
+					rowsW = math.max(rowsW, labelW + GAP + valueW)
+				end
+				pair.label:Show(); pair.value:Show()
+			else
+				pair.label:Hide(); pair.value:Hide()
+			end
 		end
 	end
+	local gridW = GAP * (COLS - 1)
+	for c = 1, COLS do gridW = gridW + (frame.colW[c] or 0) end
+	rowsW = math.max(rowsW, gridW)
 
 	-- the catches: measured before the box is sized, a long name is cut to fit
 	local list = ns.db.hud.catches and Catches(stats.loot) or {}
@@ -341,11 +367,39 @@ function HUD.Refresh()
 	end
 
 	local titleW = ICON + 5 + frame.title:GetStringWidth() + GAP + frame.reset:GetWidth()
-	local inner = math.max(labelW + GAP + valueW, titleW)
+	local inner = math.max(rowsW, titleW)
 	local columns = countW + (moneyW > 0 and GAP + moneyW or 0)
 	if shown > 0 then inner = math.max(inner, ICON + 5 + nameW + GAP + columns) end
 	local width = math.max(MIN_W, math.min(MAX_W, PAD_X + inner + PAD_X))
+	width = math.max(width, PAD_X + math.max(rowsW, titleW) + PAD_X)   -- only a catch's name is cut to fit; the rest never is
 	local y = -(frame.rowsTop + LINE_H * shownRows)
+
+	-- the grid: the column stops, the columns spread over the box's width
+	local stops, x = {}, PAD_X
+	local gap = GAP + math.max(0, width - PAD_X * 2 - gridW) / math.max(1, COLS - 1)
+	for c = 1, COLS do
+		stops[c] = x
+		x = x + (frame.colW[c] or 0) + gap
+	end
+	for i, r in ipairs(frame.rows) do
+		if i <= shownRows then
+			for _, pair in ipairs(r.pairs) do
+				pair.label:ClearAllPoints()
+				pair.value:ClearAllPoints()
+				if pair.col == COLS then
+					-- the last pair: at the right edge, the label right before its value
+					pair.value:SetPoint("TOPRIGHT", -PAD_X, r.y)
+					pair.label:SetPoint("TOPRIGHT", pair.value, "TOPLEFT", -PAIR_GAP, 0)
+				elseif pair.col then
+					pair.label:SetPoint("TOPLEFT", stops[pair.col], r.y)
+					pair.value:SetPoint("TOPLEFT", pair.label, "TOPRIGHT", PAIR_GAP, 0)
+				else
+					pair.label:SetPoint("TOPLEFT", PAD_X, r.y)
+					pair.value:SetPoint("TOPRIGHT", -PAD_X, r.y)
+				end
+			end
+		end
+	end
 
 	frame.rule:SetShown(shown > 0)
 	if shown > 0 then

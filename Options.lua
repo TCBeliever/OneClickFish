@@ -208,6 +208,8 @@ local function BuildFishing(f)
 	end)
 	f.boostSFX = p.Check("Louder sound effects", "SFX_TIP",
 		function() return S().boostSFX end, function(v) S().boostSFX = v end)
+	f.bgSound = p.Check("Keep sound in the background", "BG_TIP",
+		function() return S().bgSound end, function(v) S().bgSound = v end)
 
 	-- the lure: the known lures in the bags, as icons
 	p.Section("Lure")

@@ -19,6 +19,7 @@ local W = {
 		SoftTargetInteractRangeIsHard = "1", SoftTargetInteractGameObject = "0", SoftTargetIconGameObject = "0",
 		SoftTargetIconInteract = "0", SoftTargetTooltipInteract = "0",
 		Sound_MusicVolume = "0.8", Sound_AmbienceVolume = "0.7", Sound_SFXVolume = "0.6",
+		Sound_EnableSoundWhenGameIsInBG = "0",
 		ActionButtonUseKeyDown = "1",
 	},
 	bindings = {},    -- action -> key
@@ -262,7 +263,11 @@ local function Mock(kind, name)
 			button = button or "LeftButton"
 			if scripts.PreClick then scripts.PreClick(self, button, down) end
 			if self.__template and self.__template:find("SecureActionButtonTemplate", 1, true) then
-				if button == "LeftButton" then log("secure:" .. tostring(self.__attributes and self.__attributes.macrotext)) end
+				local a = self.__attributes or {}
+				local prefix = W.shift and "shift-" or ""
+				local suffix = button == "LeftButton" and "1" or button == "RightButton" and "2" or ("-" .. button)
+				local kind = a[prefix .. "type" .. suffix] or a["type" .. suffix] or a.type
+				if kind == "macro" then log("secure:" .. tostring(a.macrotext)) end
 			elseif scripts.OnClick then
 				scripts.OnClick(self, button, down)
 			end

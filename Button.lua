@@ -4,6 +4,7 @@ local L, Skin = ns.L, ns.Skin
 -- ===========================================================================
 -- The cast button on screen: the secure button the key clicks, made visible.
 -- Left click does what the key does (cast, or loot once the bobber is ready);
+-- Shift + left click switches fishing mode off, as the minimap button does;
 -- right click opens the settings. It shows the pole in the fishing tool slot
 -- in the game's own action button frame, and its tooltip is that pole's. The
 -- frame lights up green while a click would loot. Drag to move, unless
@@ -48,6 +49,7 @@ local function ShowTooltip(self)
 	tooltip:AddLine(" ")
 	tooltip:AddLine(L["BUTTON_LEFT"], 1, 1, 1)
 	tooltip:AddLine(L["BUTTON_RIGHT"], 1, 1, 1)
+	tooltip:AddLine(L["BUTTON_SHIFT"], Skin.Color("dim"))
 	tooltip:AddLine(L["BUTTON_DRAG"], Skin.Color("dim"))
 	-- the two lines that matter, in the header's larger font
 	for i = 4, 5 do
@@ -104,9 +106,14 @@ function Button.Setup(b)
 		local s = ns.db.button
 		s.point, s.relPoint, s.x, s.y = point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5)
 	end)
-	-- the right button has no secure action; it is ours
+	-- the right button and Shift + left have no secure action; they are ours
 	b:SetScript("PostClick", function(self, mouseButton, down)
-		if mouseButton == "RightButton" and ns.IsActionEdge(self, down) then ns.ToggleOptions() end
+		if not ns.IsActionEdge(self, down) then return end
+		if mouseButton == "RightButton" then
+			ns.ToggleOptions()
+		elseif mouseButton == "LeftButton" and IsShiftKeyDown() then
+			ns.SetEnabled(not ns.IsEnabled())   -- off, in practice: switched off, the button cannot be clicked
+		end
 	end)
 	b:SetScript("OnEnter", ShowTooltip)
 	b:SetScript("OnLeave", HideTooltip)

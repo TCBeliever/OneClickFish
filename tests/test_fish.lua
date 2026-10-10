@@ -10,7 +10,7 @@ W.items[6256] = { equipLoc = "INVTYPE_WEAPONMAINHAND", classID = 2, subClassID =
 W.items[1234] = { price = 50 }
 W.items[5678] = { price = 10 }
 local FISH, JUNK = "|cff|Hitem:1234::::|h[Fish]|h|r", "|Hitem:5678|h[Junk]|h"
-local CLICK = "CLICK OneClickFishButton:LeftButton"
+local CLICK = "CLICK OneClickFishButton:Key"   -- the key's click comes as a mouse button of its own
 
 local ns = T.boot()
 local L = ns.L
@@ -31,7 +31,7 @@ eq(T.frames.OneClickFishButton.hotkey:GetText(), "F", "the cast button shows the
 
 -- ---------------------------------------------------------------- the cast
 W.bags = { [0] = { 1234, 6256 } }
-button:Click("LeftButton", true)    -- key down, with ActionButtonUseKeyDown on
+button:Click("Key", true)    -- the key, down, with ActionButtonUseKeyDown on
 eq(W.cvars.SoftTargetInteract, "3", "soft-target interact on for the cast")
 eq(W.cvars.SoftTargetInteractRange, "100", "and its range")
 eq(db.cvarBackup.SoftTargetInteract, "1", "the player's own value is kept")
@@ -48,12 +48,29 @@ eq(W.cvars.Sound_MusicVolume, "0.15", "music lowered")
 eq(W.cvars.Sound_AmbienceVolume, "0.1", "ambience lowered")
 eq(db.soundBackup.Sound_MusicVolume, "0.8", "the player's own volume is kept")
 eq(W.cvars.Sound_SFXVolume, "0.6", "sound effects left alone (boost is off)")
+eq(W.cvars.Sound_EnableSoundWhenGameIsInBG, "1", "sound kept in the background, so the splash is heard from another window")
+eq(db.soundBackup.Sound_EnableSoundWhenGameIsInBG, "0", "the player's own setting is kept")
 check(T.logged("sound:3175"), "a chime")
 local hud = ns.HUD.GetFrame()
 check(hud ~= nil and hud:IsShown(), "the HUD comes up with the first cast")
-eq(hud.rows[1].label:GetText(), L["ROW_fishing"], "the fishing row label")
-eq(hud.rows[1].value:GetText(), "1 / 0 / 0", "casts, catches, per hour in one")
-eq(hud.rows[2].label:GetText(), string.format(L["ROW_value"], L["SRC_vendor"]), "vendor prices so far")
+local R = function(i, j) return hud.rows[i].pairs[j] end
+eq(R(1, 1).label:GetText(), L["ROW_casts"], "the first row: casts")
+eq(R(1, 1).value:GetText(), "1", "one")
+eq(R(1, 2).label:GetText(), L["ROW_catches"], "catches")
+eq(R(1, 2).value:GetText(), "0", "none yet")
+eq(R(1, 3).label:GetText(), L["ROW_perHour"], "and per hour")
+eq(R(1, 3).value:GetText(), "0", "none yet")
+check(R(1, 2).label.__point[2] > R(1, 1).label.__point[2], "pairs laid out left to right")
+eq(R(3, 1).label.__point[2], R(1, 1).label.__point[2], "the rate row's first pair at the same stop as the first row's")
+check(R(1, 1).value.__point[2] == R(1, 1).label and R(1, 1).value.__point[4] == 4, "a value sits right behind its label")
+check(R(1, 3).value.__point[1] == "TOPRIGHT" and R(1, 3).value.__point[2] == -10, "the last pair of a row ends at the right edge")
+check(R(3, 2).value.__point[1] == "TOPRIGHT" and R(3, 2).value.__point[2] == -10, "Time as well")
+check(R(3, 2).label.__point[2] == R(3, 2).value, "its label right before it")
+R(1, 3).value.GetStringWidth = function() return 300 end   -- a number wider than the box allows
+ns.HUD.Refresh()
+check(hud:GetWidth() >= 300 + 20, "the box widens past its cap rather than let a number run out of it")
+R(1, 3).value.GetStringWidth = nil
+eq(R(2, 1).label:GetText(), string.format(L["ROW_value"], L["SRC_vendor"]), "vendor prices so far")
 check(hud.title:GetText():find(L["Session"], 1, true), "titled a session")
 eq(hud.icon:GetTexture(), "fishicon", "the profession's icon")
 eq(W.overrides.F, CLICK, "bobber not registered yet: the key would cast again")
@@ -95,6 +112,7 @@ eq(ns.IsFishing(), false, "the line is in")
 eq(W.cvars.SoftTargetInteract, "1", "soft-target interact back")
 eq(db.cvarBackup, nil, "nothing left to restore")
 eq(W.cvars.Sound_MusicVolume, "0.8", "music back")
+eq(W.cvars.Sound_EnableSoundWhenGameIsInBG, "0", "background sound back")
 eq(db.soundBackup, nil, "nothing left to restore (sound)")
 eq(W.overrides.F, CLICK, "the key casts again")
 check(hud:IsShown(), "the HUD stays")
@@ -118,7 +136,7 @@ eq(stats.value, 1110, "market and vendor together")
 eq(stats.elapsed, 600, "ten minutes")
 eq(stats.catchPerHour, 12, "two catches in ten minutes")
 eq(stats.goldPerHour, 6660, "gold per hour")
-check(hud.rows[2].value:GetText():find("11.1", 1, true) and hud.rows[2].value:GetText():find("UI-SilverIcon", 1, true), "value row: 11.1 silver, with the coin")
+check(R(2, 1).value:GetText():find("11.1", 1, true) and R(2, 1).value:GetText():find("UI-SilverIcon", 1, true), "value row: 11.1 silver, with the coin")
 local M = ns.HUD.Money
 check(M(0):find("^0") and M(0):find("CopperIcon"), "0c")
 check(M(56):find("^56") and M(56):find("CopperIcon"), "56c")
@@ -127,15 +145,36 @@ check(M(1054500):find("^105.4") and M(1054500):find("GoldIcon"), "105.4g")
 check(M(10544500):find("^1,054") and M(10544500):find("GoldIcon"), "1,054g: no decimal past four digits")
 check(M(102000000):find("^10.2k") and M(102000000):find("GoldIcon"), "10.2kg")
 check(M(12345000000):find("^1.2m"), "1.2mg")
-eq(hud.rows[2].label:GetText(), string.format(L["ROW_value"], "Auctionator"), "says who priced it")
-check(hud.rows[3].value:GetText():find("10:00", 1, true), "the time, in the rate row")
-check(hud.rows[1].value:GetText():find("2 / 2 / 12", 1, true), "casts, catches, per hour")
+eq(R(2, 1).label:GetText(), string.format(L["ROW_value"], "Auctionator"), "says who priced it")
+eq(R(3, 1).label:GetText(), L["ROW_gold"], "the rate row: gold per hour")
+check(R(3, 1).value:GetText():find("^66.6") and R(3, 1).value:GetText():find("UI-SilverIcon", 1, true), "66.6 silver an hour, with the coin")
+eq(R(3, 2).label:GetText(), L["ROW_time"], "and the time")
+eq(R(3, 2).value:GetText(), "10:00", "ten minutes")
+eq(R(1, 2).value:GetText(), "2", "two catches")
+eq(R(1, 3).value:GetText(), "12", "twelve an hour")
 
 local got
 ns.RegisterCallback(function(s) got = s end)
 fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-3", 131474)
 fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-3", 131474)
 check(got ~= nil and got.casts == 3, "another addon is told")
+
+-- each sound switch on its own: no ducking, but the boost and the background sound
+db.settings.duck, db.settings.boostSFX = false, true
+fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-3a", 131474)
+eq(W.cvars.Sound_MusicVolume, "0.8", "duck off: music left alone")
+eq(W.cvars.Sound_SFXVolume, "1", "boost on its own: sound effects up")
+eq(W.cvars.Sound_EnableSoundWhenGameIsInBG, "1", "and sound in the background")
+eq(db.soundBackup.Sound_MusicVolume, nil, "only what was switched is in the backup")
+fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-3a", 131474)
+eq(W.cvars.Sound_SFXVolume, "0.6", "sound effects back")
+eq(W.cvars.Sound_EnableSoundWhenGameIsInBG, "0", "background sound back")
+db.settings.boostSFX, db.settings.bgSound = false, false
+fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-3b", 131474)
+eq(db.soundBackup, nil, "all three off: the sound is not touched")
+eq(W.cvars.Sound_EnableSoundWhenGameIsInBG, "0", "background sound left alone")
+fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-3b", 131474)
+db.settings.duck, db.settings.bgSound = true, true
 
 -- a cast from the action bar: no click, but the key loots that one as well
 W.cvars.SoftTargetInteract = "1"
@@ -237,6 +276,10 @@ eq(main.keyButton:GetText(), "F", "the key is shown")
 eq(main.autoEquip:GetChecked(), true, "equip: on by default")
 main.autoEquip:Click()
 eq(db.settings.autoEquip, false, "equip switched off")
+eq(main.bgSound:GetChecked(), true, "background sound: on by default")
+main.bgSound:Click()
+eq(db.settings.bgSound, false, "and switched off")
+main.bgSound:Click()
 main.music.plus:Click()
 eq(db.settings.musicVol, 0.2, "music up a step")
 eq(main.music.value:GetText(), "20%", "and shown")
@@ -293,7 +336,8 @@ check(T.said("H"), "is announced")
 -- language
 ns.SetLanguage("zhTW")
 eq(main.autoEquip.label:GetText(), ns.locales.zhTW["Equip a fishing pole from your bags"], "labels follow the language")
-eq(hud.rows[1].label:GetText(), ns.locales.zhTW["ROW_fishing"], "so does the HUD")
+eq(hud.reset:GetText(), ns.locales.zhTW["Reset"], "so does the HUD")
+eq(hud.rows[1].pairs[1].label:GetText(), "Casts", "whose terms stay English")
 ns.SetLanguage(nil)
 eq(main.autoEquip.label:GetText(), L["Equip a fishing pole from your bags"], "and back to the game's")
 
@@ -351,6 +395,23 @@ check(button:IsShown(), "but never hidden, so the key can still click it")
 db.settings.showButton = true
 ns.Button.Refresh()
 
+-- ---------------------------------------------------------------- Shift + left click: fishing mode off
+W.shift = true
+local before = #W.log
+button:Click("LeftButton", true)
+eq(db.settings.enabled, false, "Shift + left click: fishing mode off")
+check(T.said(L["MODE_off"]), "and said so")
+eq(#W.log, before, "nothing cast, nothing switched")
+eq(db.cvarBackup, nil, "no settings switched for a cast")
+W.shift = false
+ns.SetEnabled(true)
+W.shift = true
+button:Click("Key", true)   -- the key is SHIFT-something: its Shift is not the mouse's
+check(W.log[#W.log] == "secure:/stopcasting\n/cast Fishing", "a Shift in the key still casts")
+eq(db.settings.enabled, true, "and does not switch fishing mode")
+W.shift = false
+flush()
+
 -- ---------------------------------------------------------------- the minimap button and fishing mode
 local mm = ns.Minimap.GetFrame()
 check(mm ~= nil and mm:IsShown(), "a minimap button")
@@ -392,26 +453,37 @@ local candidates = ns.LureCandidates()
 eq(#candidates, 2, "the known lures in the bags, once each")
 eq(candidates[1].id, 262650, "newest first")
 eq(candidates[2].id, 88710, "then the hat")
-check(not hud.rows[4].label:IsShown(), "no lure row without a lure picked")
+check(not R(4, 1).label:IsShown(), "no lure row without a lure picked")
 db.settings.lure = 262650
 W.lure = nil
 ns.Changed()
 eq(ns.LureLeft(), 0, "no lure on the pole")
-check(hud.rows[4].label:IsShown(), "the lure row")
-check(hud.rows[4].value:GetText():find(L["LURE_none"], 1, true), "says none")
+check(R(4, 1).label:IsShown(), "the lure row")
+check(R(4, 1).value:GetText():find(L["LURE_none"], 1, true), "says none")
 check(button.frameArt.__vertex[1] > 0.9 and button.frameArt.__vertex[2] < 0.7, "the button goes amber")
 button:Click("LeftButton", true)
 check(button.__attributes.macrotext:find("/cast", 1, true), "without auto apply, the press still casts")
 db.settings.lureAuto = true
 button:Click("LeftButton", true)
 eq(button.__attributes.macrotext, "/use item:262650\n/use 28", "auto: the press puts the lure on the pole")
+W.now = W.now + 2
+button:Click("LeftButton", true)
+check(button.__attributes.macrotext:find("/cast", 1, true), "a second press before the enchant shows casts: no second lure")
+W.now = W.now + 10
+button:Click("LeftButton", true)
+eq(button.__attributes.macrotext, "/use item:262650\n/use 28", "still none on the pole after a while: applied again")
 W.lure = { remainingTimeMs = 540000 }
 ns.Changed()
-eq(hud.rows[4].value:GetText(), "9:00", "the client says nine minutes")
+eq(R(4, 1).value:GetText(), "9:00", "the client says nine minutes")
 button:Click("LeftButton", true)
 check(button.__attributes.macrotext:find("/cast", 1, true), "with a lure on, the press casts")
 W.lure = { remainingTimeMs = 30000 }
-check(ns.LureNeeded(), "half a minute left counts as gone")
+check(not ns.LureNeeded(), "half a minute left is still a lure: not replaced")
+W.lure = { enchantID = 4225 }
+check(ns.HasLure() and not ns.LureNeeded(), "another lure the client will not time is still a lure")
+W.lure = { enchantID = 0, remainingTimeMs = 0 }
+check(not ns.HasLure(), "an empty report is none")
+W.lure = { remainingTimeMs = 30000 }
 SlashCmdList.ONECLICKFISH("lure")
 check(T.said("remainingTimeMs=30000"), "/ocfish lure reports the raw answer")
 W.lure = nil

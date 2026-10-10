@@ -20,16 +20,22 @@ function ns.Msg(fmt, ...) print(PREFIX .. string.format(fmt, ...)) end
 -- this against a plainer binding.
 --
 -- The secure button the key clicks is also on screen (Button.lua): a mouse
--- click does what the key does. Fishing mode (the minimap button) switches
--- all of it off: the key then does nothing, nothing is counted or changed.
+-- click does what the key does, and Shift + left click switches fishing mode
+-- off, as the minimap button does. Fishing mode off: the key then does
+-- nothing, nothing is counted or changed.
+--
+-- The key's click comes in as a mouse button of its own ("Key"), so a Shift
+-- in the key (SHIFT-F) is not taken for the Shift + left click of the mouse.
 --
 -- The game has no "fish on the hook" event and no addon may click the bobber:
 -- the splash is the cue, which is why music and ambience are lowered while the
--- line is out.
+-- line is out, and why the game keeps its sound in the background then: a
+-- splash is heard from another window too.
 -- ===========================================================================
 
 local BINDING      = "ONECLICKFISH_CAST"
 local BUTTON       = "OneClickFishButton"
+local KEY_CLICK    = "Key"   -- the mouse button the key's click is delivered as
 local FISHING      = 131474   -- the Fishing spell; its name is what the macro casts
 local FISHING_TOOL = 28       -- the fishing tool slot
 local SESSION_GAP  = 30 * 60  -- a cast this long after the last one starts a new session
@@ -80,7 +86,7 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 -- ---------------------------------------------------------------------------
 -- Saved data (OneClickFishDB)
 --
---   settings = { enabled=, autoEquip=, fastLoot=, chime=, duck=, musicVol=, ambienceVol=, boostSFX=,
+--   settings = { enabled=, autoEquip=, fastLoot=, chime=, duck=, musicVol=, ambienceVol=, boostSFX=, bgSound=,
 --                showButton=, minimap=, lure= (itemID), lureAuto=, hat= (itemID),
 --                locale= ("enUS" | "zhTW"; absent = follow the game) },
 --   headBefore = what was on the head before the hat, while the hat is on
@@ -94,7 +100,7 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 
 ns.defaults = {
 	settings = { enabled = true, autoEquip = true, fastLoot = true, chime = true, duck = true, musicVol = 0.15,
-		ambienceVol = 0.10, boostSFX = false, showButton = true, minimap = true, lureAuto = false },
+		ambienceVol = 0.10, boostSFX = false, bgSound = true, showButton = true, minimap = true, lureAuto = false },
 	hud = { show = "always", catches = true, idle = 5, scale = 1.0, locked = false, point = "CENTER",
 		relPoint = "CENTER", x = 330, y = 20 },
 	button = { point = "CENTER", relPoint = "CENTER", x = 0, y = -140 },
@@ -138,23 +144,33 @@ local function RestoreCVars()
 	pendingCVars = false
 end
 
+-- The sound settings switched while the line is out, each its own option:
+-- music and ambience down, sound effects up, and sound kept in the background
+-- (Sound_EnableSoundWhenGameIsInBG, the game's own "Sound in Background"), so
+-- a splash is heard from another window. What was there is saved, and the
+-- backup names exactly the settings that were switched.
 local function DuckAudio()
-	if db.soundBackup or not db.settings.duck then return end
-	local backup = {
-		Sound_MusicVolume    = C_CVar.GetCVar("Sound_MusicVolume"),
-		Sound_AmbienceVolume = C_CVar.GetCVar("Sound_AmbienceVolume"),
-	}
+	if db.soundBackup then return end
+	local backup = {}
+	if db.settings.duck then
+		backup.Sound_MusicVolume    = C_CVar.GetCVar("Sound_MusicVolume")
+		backup.Sound_AmbienceVolume = C_CVar.GetCVar("Sound_AmbienceVolume")
+	end
 	if db.settings.boostSFX then backup.Sound_SFXVolume = C_CVar.GetCVar("Sound_SFXVolume") end
+	if db.settings.bgSound then backup.Sound_EnableSoundWhenGameIsInBG = C_CVar.GetCVar("Sound_EnableSoundWhenGameIsInBG") end
+	if next(backup) == nil then return end
 	db.soundBackup = backup
 	ns.ApplyAudioLevels()
 end
 
--- What the sound is set to while the line is out; a change in the settings lands at once.
+-- What the sound is set to while the line is out; a change in the levels lands at once.
 function ns.ApplyAudioLevels()
-	if not db.soundBackup then return end
-	C_CVar.SetCVar("Sound_MusicVolume", tostring(db.settings.musicVol))
-	C_CVar.SetCVar("Sound_AmbienceVolume", tostring(db.settings.ambienceVol))
-	if db.soundBackup.Sound_SFXVolume then C_CVar.SetCVar("Sound_SFXVolume", "1") end
+	local backup = db.soundBackup
+	if not backup then return end
+	if backup.Sound_MusicVolume then C_CVar.SetCVar("Sound_MusicVolume", tostring(db.settings.musicVol)) end
+	if backup.Sound_AmbienceVolume then C_CVar.SetCVar("Sound_AmbienceVolume", tostring(db.settings.ambienceVol)) end
+	if backup.Sound_SFXVolume then C_CVar.SetCVar("Sound_SFXVolume", "1") end
+	if backup.Sound_EnableSoundWhenGameIsInBG then C_CVar.SetCVar("Sound_EnableSoundWhenGameIsInBG", "1") end
 end
 
 local function RestoreAudio()
@@ -199,19 +215,23 @@ local function EquipBagPole()
 end
 
 -- ---------------------------------------------------------------------------
--- The lure: a consumable used on the pole, a temporary enchant that runs out.
--- Known by item ID, newest first; nothing is read off names or tooltips.
+-- The lure: a consumable used on the pole, a temporary enchant that raises
+-- the fishing skill and runs out. Known by item ID, newest first; nothing is
+-- read off names or tooltips.
+--
+-- The fish-named "lures" from Dragonflight on (Scalebelly Mackerel Lure,
+-- Ula'tek Snakehead Lure, 誘餌 in zhTW: "increases the chance to catch X for
+-- 30 min") are not these: they are a buff on the player, never on the pole,
+-- so the pole would read as bare and one would be used before every cast.
+-- They are left out.
 -- ---------------------------------------------------------------------------
 
-local LURE_LOW = 60   -- under this many seconds, a lure is as good as gone
+local LURE_SETTLE = 5   -- seconds after a lure is put on before the pole is read again: the enchant lands late
+local lureApplied       -- GetTime() of the last lure put on by the button
 
 local LURES = {
-	-- Midnight: Wriggling Worm, Lucky Loa, Blood Hunter, Ominous Octopus, Sunwell Fish, Ula'tek Snakehead
-	262650, 241145, 241147, 241149, 241150, 277821,
-	-- The War Within: Specular Rainbowfish, Quiet River Bass, Dornish Pike, Arathor Hammerfish, Roaring Anglerseeker
-	219002, 219003, 219004, 219005, 219006,
-	-- Dragonflight: Scalebelly Mackerel, Thousandbite Piranha, Temporal Dragonhead, Cerulean Spinefish, Aileron Seamoth, Islefin Dorado
-	193893, 193894, 193895, 193896, 198401, 198403,
+	-- Midnight: Writhing Wiggleworm
+	262650,
 	-- older, good anywhere: Worm Supreme, Heat-Treated Spinning Lure, Sharpened Fish Hook, Feathered Lure, Glow Worm,
 	-- Aquadynamic Fish Attractor, Bright Baubles, Flesh Eating Worm, Aquadynamic Fish Lens, Nightcrawlers, Shiny Bauble
 	124674, 46006, 34832, 68049, 67404, 6533, 6532, 7307, 6811, 6530, 6529,
@@ -232,18 +252,37 @@ local LURE_RANK, HAT_RANK = Rank(LURES), Rank(HATS)
 
 local function IsSecret(v) return issecretvalue ~= nil and issecretvalue(v) end
 
--- Seconds the lure on the pole has left, 0 when there is none.
-function ns.LureLeft()
+-- What the client says about the pole's temporary enchant; nil when there is none.
+local function LureInfo()
 	local ok, info = pcall(C_PaperDollInfo.GetTemporaryEnchantmentInfo, FISHING_TOOL)
-	if ok and type(info) == "table" and type(info.remainingTimeMs) == "number" and not IsSecret(info.remainingTimeMs) then
+	if ok and type(info) == "table" then return info end
+end
+
+-- Is a lure on the pole, whichever lure it is? One the client reports but
+-- will not say more about (a secret value) counts: it is there.
+function ns.HasLure()
+	local info = LureInfo()
+	if not info then return false end
+	local id, ms = info.enchantID, info.remainingTimeMs
+	if IsSecret(id) or IsSecret(ms) then return true end
+	return (type(id) == "number" and id > 0) or (type(ms) == "number" and ms > 0)
+end
+
+-- Seconds the lure on the pole has left, 0 when there is none or the client will not say.
+function ns.LureLeft()
+	local info = LureInfo()
+	if info and type(info.remainingTimeMs) == "number" and not IsSecret(info.remainingTimeMs) then
 		return math.max(0, info.remainingTimeMs / 1000)
 	end
 	return 0
 end
 
--- Is a lure wanted before the next cast?
+-- Is a lure wanted before the next cast? Only with none on the pole at all: a
+-- lure that is on, another one or one about to run out, is never replaced.
+-- One just put on is given a moment to show.
 function ns.LureNeeded()
-	return db.settings.lure ~= nil and ns.LureLeft() < LURE_LOW
+	if db.settings.lure == nil or ns.HasLure() then return false end
+	return lureApplied == nil or GetTime() - lureApplied >= LURE_SETTLE
 end
 
 -- The known items the player has, in the list's order: { { id=, name=, icon= }, ... }.
@@ -331,7 +370,7 @@ local function RefreshBinding()
 		if fishing and bobberReady then
 			SetOverrideBinding(button, true, key, "INTERACTTARGET")
 		else
-			SetOverrideBindingClick(button, true, key, BUTTON)
+			SetOverrideBindingClick(button, true, key, BUTTON, KEY_CLICK)
 		end
 	end
 end
@@ -352,10 +391,18 @@ function ns.IsActionEdge(self, down)
 	return down == (useKeyDown and true or false)
 end
 
+-- A click that casts or loots: the key's, or the mouse's left button without
+-- Shift (Shift + left click switches fishing mode off: Button.lua, after the
+-- click; the secure side of it is "none").
+function ns.IsCastClick(mouseButton)
+	if mouseButton == KEY_CLICK then return true end
+	return mouseButton == "LeftButton" and not IsShiftKeyDown()
+end
+
 -- Out of combat, before the secure click: the macro for the moment, the
 -- settings for the cast, the pole.
 local function OnPreClick(self, mouseButton, down)
-	if mouseButton ~= "LeftButton" or not ns.IsActionEdge(self, down) then return end
+	if not ns.IsCastClick(mouseButton) or not ns.IsActionEdge(self, down) then return end
 	if InCombatLockdown() or not db.settings.enabled then return end
 	if fishing and bobberReady then
 		-- a mouse click while the key is pointed at Interact: the same thing
@@ -367,6 +414,7 @@ local function OnPreClick(self, mouseButton, down)
 		-- the lure goes on the pole: that is a cast of its own, so this press
 		-- does only that, and the next one casts
 		self:SetAttribute("macrotext", "/use item:" .. db.settings.lure .. "\n/use " .. FISHING_TOOL)
+		lureApplied = GetTime()
 		C_Timer.After(1, ns.Changed)   -- the HUD and the button, once the lure is on
 		return
 	end
@@ -384,7 +432,9 @@ end
 local function CreateButton()
 	local b = CreateFrame("Button", BUTTON, UIParent, "SecureActionButtonTemplate, BackdropTemplate")
 	b:RegisterForClicks("AnyDown", "AnyUp")   -- the template acts on the one edge ActionButtonUseKeyDown picks
-	b:SetAttribute("type1", "macro")           -- the left button only: the right one opens the settings
+	b:SetAttribute("type1", "macro")           -- the left button: the right one opens the settings
+	b:SetAttribute("shift-type1", "none")      -- Shift + left: no secure action; fishing mode off, in PostClick
+	b:SetAttribute("type-" .. KEY_CLICK, "macro")   -- the key, Shift or not
 	b:SetAttribute("macrotext", "/cast " .. fishingName)
 	b:SetScript("PreClick", OnPreClick)
 	ns.Button.Setup(b)   -- what it looks like on screen
