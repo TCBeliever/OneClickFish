@@ -91,9 +91,10 @@ eq(db.session.items, 3, "three items")
 eq(db.session.vendor, 110, "valued at vendor prices")
 check(T.logged("loot:2") and T.logged("loot:1"), "looted at once")
 eq(db.session.loot[1234].count, 2, "the catch is on the list")
-eq(hud.catches[1].count:GetText(), "2", "HUD: the most caught first")
+eq(hud.catches[1].count:GetText(), "2", "HUD: the catch worth the most first (two fish at 50 over one junk at 10)")
 check(hud.catches[1].name:GetText():find("item1234", 1, true), "with its name")
 eq(hud.catches[2].count:GetText(), "1", "then the rest")
+check(not hud.pager:IsShown(), "one page: no page number")
 check(hud.catches[1].value:GetText():find("^1.0") and hud.catches[1].value:GetText():find("SilverIcon"), "what the catch is worth")
 check(hud.rule:IsShown(), "under a line")
 eq(hud.catches[1].frame.link, FISH, "the row knows its item, for the tooltip")
@@ -353,6 +354,43 @@ W.ctrl = true
 hud:GetScript("OnMouseWheel")(hud, -1)
 eq(db.hud.scale, 1.0, "Ctrl + wheel resizes")
 W.ctrl = false
+
+-- more catches than a page: worth the most first, the wheel turns the page
+local keep = db.session.loot
+db.session.loot = {}
+for id = 7001, 7019 do
+	W.items[id] = { price = 1 }
+	db.session.loot[id] = { link = "|Hitem:" .. id .. "|h[Fish " .. id .. "]|h", count = 1, value = (id - 7000) * 100 }
+end
+db.session.loot[7010].count = 5   -- many, but cheap ones: the value is what orders the list
+ns.HUD.Refresh()
+local function Shown()
+	local n = 0
+	for _, r in ipairs(hud.catches) do if r.frame:IsShown() then n = n + 1 end end
+	return n
+end
+eq(Shown(), 10, "ten to a page")
+check(hud.catches[1].frame.link:find("item:7019", 1, true), "the catch worth the most first")
+check(hud.catches[10].frame.link:find("item:7010", 1, true), "down to the tenth")
+check(hud.pager:IsShown() and hud.pager:GetText() == "1/2", "page 1 of 2")
+hud:GetScript("OnMouseWheel")(hud, -1)
+eq(hud.pager:GetText(), "2/2", "wheel down: the next page")
+check(hud.catches[1].frame.link:find("item:7009", 1, true), "starting where the first left off")
+eq(Shown(), 9, "with what is left")
+hud:GetScript("OnMouseWheel")(hud, -1)
+eq(hud.pager:GetText(), "2/2", "and no further")
+hud:GetScript("OnMouseWheel")(hud, 1)
+hud:GetScript("OnMouseWheel")(hud, 1)
+eq(hud.pager:GetText(), "1/2", "wheel up: back to the first, and no further")
+for id = 7020, 7060 do
+	W.items[id] = { price = 1 }
+	db.session.loot[id] = { link = "|Hitem:" .. id .. "|h[Fish " .. id .. "]|h", count = 1, value = 1 }
+end
+ns.HUD.Refresh()
+eq(hud.pager:GetText(), "1/5", "sixty kinds: the list keeps fifty, five pages")
+db.session.loot = keep
+ns.HUD.Refresh()
+check(not hud.pager:IsShown(), "back to one page")
 hud:GetScript("OnMouseUp")(hud, "RightButton")
 check(main:IsShown(), "right click: the settings")
 main:Hide()

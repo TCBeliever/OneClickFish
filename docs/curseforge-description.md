@@ -14,7 +14,7 @@ There is no event for a bite: the splash is the cue. Music and ambience are lowe
 
 **Session HUD**
 
-A small box from the first cast on, three lines: casts, catches and catches per hour; value; gold per hour and the time, and under them what was caught, the most caught first, with its count and value; hover a row for the item. Prices come from Auctionator or TSM when one is installed, else from the vendor. The channel drains along the bottom while the line is out, and a Reset button in the title row starts over. The box goes after a few minutes without a cast and comes back with the next; thirty minutes without a cast starts a new session. Drag to move, Ctrl + mouse wheel to resize, right click for the settings.
+A small box from the first cast on, three lines: casts, catches and catches per hour; value; gold per hour and the time, and under them what was caught, worth the most first, with its count and value; hover a row for the item. Ten to a page, up to fifty kinds; the mouse wheel turns the page. Prices come from Auctionator or TSM when one is installed, else from the vendor. The channel drains along the bottom while the line is out, and a Reset button in the title row starts over. The box goes after a few minutes without a cast and comes back with the next; thirty minutes without a cast starts a new session. Drag to move, Ctrl + mouse wheel to resize, right click for the settings.
 
 **On screen**
 

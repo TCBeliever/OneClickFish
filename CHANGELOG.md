@@ -24,3 +24,7 @@
 ## 0.2.2 (2026-10-10)
 
 - Shift + left click on the cast button switches fishing mode off, as the minimap button does. The key's click now comes in as a button of its own, so a Shift in the key (SHIFT-F) is not taken for it.
+
+## 0.2.3 (2026-10-10)
+
+- HUD: the catches are listed worth the most first (the value of the catch, then its count), ten to a page, up to fifty kinds; the mouse wheel turns the page, a page number under the list says where you are. Before, the list stopped at eight kinds, most caught first, and a dear catch could fall off it.

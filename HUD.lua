@@ -19,11 +19,13 @@ local L, Skin = ns.L, ns.Skin
 -- are spread over the box's width and only ever move outwards, so the
 -- ticking numbers do not shift anything.
 --   ---------------------------------------------
---   [i] Scalebelly Mackerel        6     8g 10s   <- what was caught, most first; hover for the item
+--   [i] Scalebelly Mackerel        6     8g 10s   <- what was caught, worth the most first; hover for the item
 --   [i] Thousandbite Piranha       3     2g 05s
+--                                           1/3   <- more than a page: the mouse wheel turns it
 --   [==========------]                            <- the channel draining, only while the line is out
 --
--- Right click opens the settings, drag moves, Ctrl + mouse wheel resizes.
+-- Right click opens the settings, drag moves, the mouse wheel pages the
+-- catches, Ctrl + mouse wheel resizes.
 -- ===========================================================================
 
 local HUD = {}
@@ -39,7 +41,8 @@ local BAR_H   = 3
 local BAR_GAP = 6    -- above the bar
 local RULE_GAP = 5   -- above and below a line between two blocks
 local TITLE_H = 18
-local MAX_CATCHES = 8
+local MAX_CATCHES = 50   -- kinds of catch the list keeps
+local PAGE        = 10   -- of them on screen at once
 
 HUD.SCALE_MIN, HUD.SCALE_MAX, HUD.SCALE_STEP = 0.6, 1.8, 0.1
 HUD.IDLE_MIN, HUD.IDLE_MAX = 1, 30   -- minutes without a cast before the box goes
@@ -99,7 +102,7 @@ local function Values(stats)
 	}
 end
 
--- The catches of the session, most first: { id=, link=, count=, value=, name=, icon= }.
+-- The catches of the session, worth the most first: { id=, link=, count=, value=, name=, icon= }.
 -- Grey things and what Dejunk calls junk are left out. A name the client has
 -- not loaded yet is read off the link and asked for; the event brings a refresh.
 local POOR = Enum.ItemQuality and Enum.ItemQuality.Poor or 0
@@ -121,9 +124,11 @@ local function Catches(loot)
 		end
 	end
 	table.sort(list, function(a, b)
+		if a.value ~= b.value then return a.value > b.value end
 		if a.count ~= b.count then return a.count > b.count end
 		return a.id < b.id
 	end)
+	for i = #list, MAX_CATCHES + 1, -1 do list[i] = nil end
 	return list
 end
 
@@ -176,11 +181,22 @@ local function MakeHandle(widget)
 		s.point, s.relPoint, s.x, s.y = point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5)
 	end)
 	widget:SetScript("OnMouseWheel", function(_, delta)
-		if IsControlKeyDown() then HUD.SetScale(ns.db.hud.scale + delta * HUD.SCALE_STEP) end
+		if IsControlKeyDown() then
+			HUD.SetScale(ns.db.hud.scale + delta * HUD.SCALE_STEP)
+		else
+			HUD.Page(delta < 0 and 1 or -1)
+		end
 	end)
 	widget:SetScript("OnMouseUp", function(_, mouseButton)
 		if mouseButton == "RightButton" then ns.ToggleOptions() end
 	end)
+end
+
+-- The catches, a page at a time: the wheel turns it; Refresh keeps it within the list.
+local page = 1
+function HUD.Page(step)
+	page = math.max(1, page + step)
+	HUD.Refresh()
 end
 
 -- The channel draining: how much of the cast is left, each frame while the line is out.
@@ -281,9 +297,11 @@ local function CreateHUD()
 	f.colW = {}   -- the grid's column widths, which only grow
 	f.rowsTop = top
 
-	-- the catches, under a line of their own
+	-- the catches, under a line of their own, and the page under them
 	f.rule = Rule(f)
 	f.catches = {}
+	f.pager = Skin.Label(f, "", nil, "dim")
+	f.pager:SetJustifyH("RIGHT")
 
 	f.track = Skin.Fill(f, "ARTWORK", "border", 0.5)
 	f.track:SetHeight(BAR_H)
@@ -349,12 +367,15 @@ function HUD.Refresh()
 	for c = 1, COLS do gridW = gridW + (frame.colW[c] or 0) end
 	rowsW = math.max(rowsW, gridW)
 
-	-- the catches: measured before the box is sized, a long name is cut to fit
+	-- the catches: the page of them, measured before the box is sized, a long name is cut to fit
 	local list = ns.db.hud.catches and Catches(stats.loot) or {}
-	local shown = math.min(#list, MAX_CATCHES)
+	local pages = math.max(1, math.ceil(#list / PAGE))
+	page = math.max(1, math.min(pages, page))
+	local first = (page - 1) * PAGE
+	local shown = math.max(0, math.min(PAGE, #list - first))
 	local nameW, countW, moneyW = 0, 0, 0
 	for i = 1, shown do
-		local r, c = CatchRow(frame, i), list[i]
+		local r, c = CatchRow(frame, i), list[first + i]
 		r.frame.link = c.link
 		r.icon:SetTexture(c.icon)
 		r.name:SetWidth(0)   -- unbound, to measure
@@ -421,6 +442,13 @@ function HUD.Refresh()
 		end
 	end
 	for i = shown + 1, #frame.catches do frame.catches[i].frame:Hide() end
+	frame.pager:SetShown(pages > 1)
+	if pages > 1 then
+		frame.pager:SetText(string.format("%d/%d", page, pages))
+		frame.pager:ClearAllPoints()
+		frame.pager:SetPoint("TOPRIGHT", -PAD_X, y)
+		y = y - LINE_H
+	end
 
 	local height = -y + PAD_Y
 	if fishing then height = height + BAR_GAP + BAR_H end
