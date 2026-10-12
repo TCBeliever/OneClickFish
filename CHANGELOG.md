@@ -28,3 +28,7 @@
 ## 0.2.3 (2026-10-10)
 
 - HUD: the catches are listed worth the most first (the value of the catch, then its count), ten to a page, up to fifty kinds; the mouse wheel turns the page, a page number under the list says where you are. Before, the list stopped at eight kinds, most caught first, and a dear catch could fall off it.
+
+## 0.2.4 (2026-10-12)
+
+- The cast button can be resized: *Button size* on the HUD tab (50% to 250% of the game's action buttons). A size asked for in combat is applied when combat ends.

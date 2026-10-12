@@ -71,6 +71,7 @@ ns.locales.enUS = {
 	["BUTTON_RIGHT"] = "Right click: settings.",
 	["BUTTON_SHIFT"] = "Shift + left click: fishing mode off.",
 	["BUTTON_DRAG"] = "Drag to move.",
+	["BUTTON_SIZE_TIP"] = "The cast button's size, as a share of the game's own action buttons.",
 	["MINIMAP_HINT"] = "Left click: fishing mode on or off. Right click: settings.",
 	["ROW_casts"]       = "Casts",
 	["ROW_catches"]     = "Catches",
@@ -114,6 +115,8 @@ ns.locales.zhTW = {
 	["BUTTON_RIGHT"] = "右鍵：設定。",
 	["BUTTON_SHIFT"] = "Shift + 左鍵：關閉釣魚模式。",
 	["BUTTON_DRAG"] = "拖曳移動。",
+	["BUTTON_SIZE_TIP"] = "拋竿按鈕的大小，以遊戲動作列按鈕為 100%。",
+	["Button size"]      = "拋竿按鈕大小",
 	["MINIMAP_HINT"] = "左鍵：開關釣魚模式。右鍵：設定。",
 	-- the HUD's terms stay English in zhTW (shorter, and clearer than 拋竿 / 漁獲 / 收益); the lure is Chinese
 	["ROW_casts"]       = "Casts",

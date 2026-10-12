@@ -8,7 +8,7 @@ local L, Skin = ns.L, ns.Skin
 -- right click opens the settings. It shows the pole in the fishing tool slot
 -- in the game's own action button frame, and its tooltip is that pole's. The
 -- frame lights up green while a click would loot. Drag to move, unless
--- positions are locked.
+-- positions are locked; the size is set in the settings.
 --
 -- A hidden button cannot be clicked by a key, so with the button switched off
 -- it is only made invisible and deaf to the mouse.
@@ -19,6 +19,8 @@ ns.Button = Button
 
 local SIZE = 36
 local FALLBACK_ICON = "Interface\\Icons\\Trade_Fishing"
+
+Button.SCALE_MIN, Button.SCALE_MAX, Button.SCALE_STEP = 0.5, 2.5, 0.1
 
 local frame, tooltip, itemTooltip
 
@@ -32,6 +34,15 @@ function Button.ResetPosition()
 	local s, d = ns.db.button, ns.defaults.button
 	s.point, s.relPoint, s.x, s.y = d.point, d.relPoint, d.x, d.y
 	if frame then ApplyPosition() end
+end
+
+-- The size, as a scale of the game's own action button. A secure frame
+-- cannot be resized in combat: the saved value waits, Refresh applies it after.
+function Button.SetScale(scale)
+	scale = math.max(Button.SCALE_MIN, math.min(Button.SCALE_MAX, scale))
+	ns.db.button.scale = math.floor(scale * 10 + 0.5) / 10
+	Button.Refresh()
+	ns.RefreshOptions()
 end
 
 -- Two tooltips of ours, one under the other: what the button is and does,
@@ -126,6 +137,7 @@ function Button.Refresh()
 	local shown = ns.db.settings.enabled and ns.db.settings.showButton
 	frame:SetAlpha(shown and 1 or 0)
 	frame:EnableMouse(shown)
+	if not InCombatLockdown() and frame:GetScale() ~= ns.db.button.scale then frame:SetScale(ns.db.button.scale) end
 	if not shown then return end
 	frame.icon:SetTexture(GetInventoryItemTexture("player", ns.FISHING_TOOL) or FALLBACK_ICON)
 	local key = ns.GetKey()

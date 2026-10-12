@@ -92,7 +92,7 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 --   headBefore = what was on the head before the hat, while the hat is on
 --   hud      = { show = "always" | "never", catches=, idle= (minutes without a cast before it goes),
 --                scale=, locked= (the cast button too), point=, relPoint=, x=, y= },
---   button   = { point=, relPoint=, x=, y= },   minimap = { angle= },
+--   button   = { point=, relPoint=, x=, y=, scale= },   minimap = { angle= },
 --   session  = { casts=, catches=, items=, market=, vendor=, source=, start=, last=,
 --                loot = { [itemID] = { link=, count=, value= } } },
 --   cvarBackup, soundBackup = what was there before a cast, while the cast is on
@@ -103,7 +103,7 @@ ns.defaults = {
 		ambienceVol = 0.10, boostSFX = false, bgSound = true, showButton = true, minimap = true, lureAuto = false },
 	hud = { show = "always", catches = true, idle = 5, scale = 1.0, locked = false, point = "CENTER",
 		relPoint = "CENTER", x = 330, y = 20 },
-	button = { point = "CENTER", relPoint = "CENTER", x = 0, y = -140 },
+	button = { point = "CENTER", relPoint = "CENTER", x = 0, y = -140, scale = 1.0 },
 	minimap = { angle = 220 },
 	session = { casts = 0, catches = 0, items = 0, market = 0, vendor = 0 },
 }
@@ -704,6 +704,7 @@ events:SetScript("OnEvent", function(self, event, a1, a2, a3)
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		if pendingBinding then RefreshBinding() end
 		if pendingCVars and not fishing then RestoreCVars() end
+		ns.Button.Refresh()   -- a size asked for in combat
 
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" then
 		if a1 == FISHING_TOOL then ns.Button.Refresh() end

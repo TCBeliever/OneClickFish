@@ -3,13 +3,13 @@
 ## Notes: One key casts and loots. A session HUD tracks catches, value and gold per hour.
 ## Notes-zhTW: 一鍵拋竿收竿，外加本次釣魚的漁獲、價值與每小時收益統計。
 ## Author: Venser
-## Version: 0.2.3
+## Version: 0.2.4
 ## SavedVariables: OneClickFishDB
 ## IconTexture: Interface\Icons\Trade_Fishing
 ## Category: venMOD
 ## AddonCompartmentFunc: OneClickFish_OnAddonCompartmentClick
 ## OptionalDeps: Auctionator, TradeSkillMaster
-## X-License: MIT
+## X-License: All Rights Reserved: you are free to fork and modify on GitHub, please ask about anything else.
 ## X-Curse-Project-ID: 1734853
 
 Locales.lua

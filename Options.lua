@@ -236,6 +236,9 @@ local function BuildHud(f)
 	p.Section("On screen")
 	f.showButton = p.Check("Show the cast button", "BUTTON_TIP",
 		function() return S().showButton end, function(v) S().showButton = v end)
+	f.buttonScale = p.Step("Button size", "BUTTON_SIZE_TIP", function() return ns.db.button.scale end, Percent, function(dir)
+		ns.Button.SetScale(ns.db.button.scale + dir * ns.Button.SCALE_STEP)
+	end)
 	f.minimap = p.Check("Show the minimap button", "MINIMAP_HINT",
 		function() return S().minimap end, function(v) S().minimap = v end)
 
