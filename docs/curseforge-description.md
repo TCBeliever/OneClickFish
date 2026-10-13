@@ -20,8 +20,4 @@ A small box from the first cast on, three lines: casts, catches and catches per 
 
 A cast button wearing the pole in your fishing tool slot, with that pole's tooltip: left click casts or loots, Shift + left click switches fishing mode off, right click opens the settings; its size is set in the settings. A minimap button with the Fishing profession's icon: left click switches fishing mode on or off, right click opens the settings.
 
-**For other addons**
-
-`OneClickFish.GetStats()` and `OneClickFish.RegisterCallback(fn)` hand out the session.
-
 No libraries, no texture or font files. English and 繁體中文.

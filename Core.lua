@@ -1,9 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- The one global: other addons (a grind tracker, say) read the session through it.
-OneClickFish = ns
-
 local PREFIX = "|cff66ccffOneClick|rFish: "
 function ns.Msg(fmt, ...) print(PREFIX .. string.format(fmt, ...)) end
 
@@ -46,10 +43,10 @@ local POLE_SUB     = Enum.ItemWeaponSubclass and Enum.ItemWeaponSubclass.Fishing
 
 ns.FISHING_TOOL = FISHING_TOOL
 
--- Every Fishing the client has had; the event names the one that was cast.
+-- The Fishing spells Retail casts, ice and void holes too; the event names the
+-- one that was cast, and any other is told by the channel's name.
 local FISHING_SPELLS = {}
-for _, id in ipairs({ 131474, 131490, 131476, 7620, 7731, 7732, 18248, 33095, 51294, 88868, 110410,
-	158743, 271990, 377895, 1224771 }) do
+for _, id in ipairs({ 131474, 131476, 131490, 158743, 377895, 1224771 }) do
 	FISHING_SPELLS[id] = true
 end
 
@@ -77,7 +74,6 @@ local pendingBinding = false -- asked for in combat; done when it ends
 local pendingCVars   = false
 local castSerial = 0         -- tells a fresh cast from a stale fallback timer
 local tallied    = false     -- this loot window is counted
-local callbacks  = {}
 
 function ns.IsFishing() return fishing end
 function ns.IsBobberReady() return bobberReady end
@@ -229,14 +225,26 @@ end
 local LURE_SETTLE = 5   -- seconds after a lure is put on before the pole is read again: the enchant lands late
 local lureApplied       -- GetTime() of the last lure put on by the button
 
+-- By item ID, highest first: the newest items have the highest IDs. The hats
+-- among them (Nat's Hat, Nat's Drinking Hat, Weather-Beaten Fishing Hat) are
+-- worn, and their use is a lure.
 local LURES = {
-	-- Midnight: Writhing Wiggleworm
-	262650,
-	-- older, good anywhere: Worm Supreme, Heat-Treated Spinning Lure, Sharpened Fish Hook, Feathered Lure, Glow Worm,
-	-- Aquadynamic Fish Attractor, Bright Baubles, Flesh Eating Worm, Aquadynamic Fish Lens, Nightcrawlers, Shiny Bauble
-	124674, 46006, 34832, 68049, 67404, 6533, 6532, 7307, 6811, 6530, 6529,
-	-- hats whose use is a lure: Nat's Hat, Nat's Drinking Hat, Weather-Beaten Fishing Hat
-	88710, 117405, 33820,
+	262650,   -- Writhing Wiggleworm (Midnight)
+	118391,   -- Worm Supreme
+	117405,   -- Nat's Drinking Hat
+	88710,    -- Nat's Hat
+	68049,    -- Heat-Treated Spinning Lure
+	67404,    -- Glass Fishing Bobber
+	62673,    -- Feathered Lure
+	46006,    -- Glow Worm
+	34861,    -- Sharpened Fish Hook
+	33820,    -- Weather-Beaten Fishing Hat
+	7307,     -- Flesh Eating Worm
+	6811,     -- Aquadynamic Fish Lens
+	6533,     -- Aquadynamic Fish Attractor
+	6532,     -- Bright Baubles
+	6530,     -- Nightcrawlers
+	6529,     -- Shiny Bauble
 }
 
 -- Head pieces worth wearing at the water: Elegant Artisan's Fishing Hat, Bright Linen Fishing Hat,
@@ -488,9 +496,6 @@ end
 
 local function Notify()
 	ns.HUD.Refresh()
-	if #callbacks == 0 then return end
-	local stats = ns.GetStats()
-	for _, fn in ipairs(callbacks) do pcall(fn, stats) end
 end
 
 -- quiet: no chat line (a new session starting on its own)
@@ -572,8 +577,7 @@ local function RefreshJunk()
 end
 function ns.IsJunk(id) return junk[id] == true end
 
--- For the HUD and for other addons: OneClickFish.GetStats() -> table,
--- OneClickFish.RegisterCallback(fn) -> fn(stats) whenever the numbers change.
+-- The session as the HUD shows it.
 function ns.GetStats()
 	if not db then return nil end
 	local s = db.session
@@ -588,10 +592,6 @@ function ns.GetStats()
 		goldPerHour  = elapsed >= 60 and value / hours or 0,
 		loot = s.loot,   -- itemID -> { link, count }
 	}
-end
-
-function ns.RegisterCallback(fn)
-	if type(fn) == "function" then callbacks[#callbacks + 1] = fn end
 end
 
 -- ---------------------------------------------------------------------------

@@ -29,12 +29,8 @@
 - `/ocfish reset`：重新計算本次釣魚。
 - `/ocfish restore`：手動還原互動與聲音設定。
 
-## 給其他插件
-
-`OneClickFish.GetStats()` 回傳本次釣魚（casts、catches、items、value、marketValue、vendorValue、source、elapsed、catchPerHour、goldPerHour）；`OneClickFish.RegisterCallback(fn)` 在數字變動時呼叫 `fn(stats)`。
-
 ## 開發
 
 `deploy.bat` 把插件複製到遊戲目錄，遊戲裡 `/reload`。`python tests/run_tests.py`（需要 `pip install lupa`）會編譯每個檔案、檢查發佈資訊與語系覆蓋，並用 WoW API 樁模擬一趟釣魚，兩種語言各跑一次。[docs/key-binding.md](docs/key-binding.md) 比較按鍵的兩種接法。
 
-一鍵釣魚的技巧參考 [EasyFishing](https://www.curseforge.com/wow/addons/easyfishing)（MIT）；見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+部分程式碼改寫自 [EasyFishing](https://www.curseforge.com/wow/addons/easyfishing)（MIT）；見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

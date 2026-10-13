@@ -32,12 +32,8 @@ Everything is drawn with the game's own fonts and a flat palette, the same as Co
 - `/ocfish restore`: put your interact and sound settings back by hand.
 - `/ocfish lure`: what the client says about the lure on the pole, for a bug report.
 
-## For other addons
-
-`OneClickFish.GetStats()` returns the session (casts, catches, items, value, marketValue, vendorValue, source, elapsed, catchPerHour, goldPerHour); `OneClickFish.RegisterCallback(fn)` calls `fn(stats)` whenever the numbers change.
-
 ## Development
 
 `deploy.bat` copies the addon into the game folder; `/reload` in game. `python tests/run_tests.py` (needs `pip install lupa`) compiles every file, checks the release metadata and locale coverage, and runs a fishing trip against WoW API stubs in both languages. [docs/key-binding.md](docs/key-binding.md) weighs the two ways of wiring the key.
 
-The one-key technique follows [EasyFishing](https://www.curseforge.com/wow/addons/easyfishing) (MIT); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Parts of the code are adapted from [EasyFishing](https://www.curseforge.com/wow/addons/easyfishing) (MIT); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

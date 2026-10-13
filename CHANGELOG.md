@@ -32,3 +32,10 @@
 ## 0.2.4 (2026-10-12)
 
 - The cast button can be resized: *Button size* on the HUD tab (50% to 250% of the game's action buttons). A size asked for in combat is applied when combat ends.
+
+## 0.3.0 (2026-10-13)
+
+- Lures: two wrong item IDs put right, Worm Supreme (118391, was 124674, a Darkmoon doughnut) and Sharpened Fish Hook (34861, was 34832, a lager), and Feathered Lure (62673) added; the list runs by item ID, newest first.
+- The `OneClickFish` global with `GetStats` and `RegisterCallback` for other addons is gone.
+- Fishing is known by the spells Retail casts: the old ranks from before Mists of Pandaria and Fishing Journal (271990, not a cast) are off the list.
+- THIRD_PARTY_NOTICES.md: what is adapted from EasyFishing, with its MIT License in full.

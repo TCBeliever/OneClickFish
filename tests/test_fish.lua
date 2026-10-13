@@ -154,11 +154,10 @@ eq(R(3, 2).value:GetText(), "10:00", "ten minutes")
 eq(R(1, 2).value:GetText(), "2", "two catches")
 eq(R(1, 3).value:GetText(), "12", "twelve an hour")
 
-local got
-ns.RegisterCallback(function(s) got = s end)
 fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-3", 131474)
 fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-3", 131474)
-check(got ~= nil and got.casts == 3, "another addon is told")
+check(ns.GetStats().casts == 3, "a third cast")
+check(OneClickFish == nil, "no global for other addons")
 
 -- each sound switch on its own: no ducking, but the boost and the background sound
 db.settings.duck, db.settings.boostSFX = false, true
