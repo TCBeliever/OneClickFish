@@ -12,13 +12,17 @@ W.items[5678] = { price = 10 }
 local FISH, JUNK = "|cff|Hitem:1234::::|h[Fish]|h|r", "|Hitem:5678|h[Junk]|h"
 local CLICK = "CLICK OneClickFishButton:Key"   -- the key's click comes as a mouse button of its own
 
+W.addons = { BetterFishing = true }   -- another fishing addon switching the same settings
 local ns = T.boot()
 local L = ns.L
 local db = OneClickFishDB
+W.addons = nil
 
 -- ---------------------------------------------------------------- login
 check(T.said(L["No key bound. Bind one under Key Bindings > AddOns > OneClickFish, or in /ocfish."]), "no key: a hint")
 eq(db.hinted, true, "the hint is given once")
+check(T.said(L["RIVAL_LOADED"]:format("BetterFishing")), "BetterFishing on as well: a word in chat")
+check(not T.said(L["RIVAL_LOADED"]:format("EasyFishing")), "EasyFishing off: nothing about it")
 local button = T.frames.OneClickFishButton
 check(button ~= nil and button:IsShown(), "the secure button is there and never hidden")
 check(ns.HUD.GetFrame() == nil, "no HUD before the first cast")

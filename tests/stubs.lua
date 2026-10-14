@@ -127,7 +127,7 @@ C_Item = {
 function GetInventoryItemTexture(_, slot) if slot == 28 and W.toolSlot then return "pole" .. W.toolSlot end end
 -- W.items[id].use: the item can be used
 C_Item.GetItemSpell = function(id) local it = W.items[id]; if it and it.use then return "Use", 1 end end
-function GetItemCount(id)
+C_Item.GetItemCount = function(id)
 	local n = 0
 	for _, bag in pairs(W.bags) do for _, item in ipairs(bag) do if item == id then n = n + 1 end end end
 	return n

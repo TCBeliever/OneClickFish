@@ -54,6 +54,11 @@ end
 -- keyboard/mouse default (no facing cone; the gamepad value of 1 misses a
 -- bobber you are not facing dead-on). Range 100 with no hard cutoff: a bobber
 -- cast far out would otherwise be excluded with nothing to tell it from a miss.
+-- Other fishing addons that switch the same settings for the cast and put
+-- them back after. Each backs up what the other has just switched on, so the
+-- settings can stay on after fishing: at login, a word in chat if one is on.
+local RIVALS = { "BetterFishing", "EasyFishing" }
+
 local CVARS = {
 	SoftTargetInteract            = "3",
 	SoftTargetInteractArc         = "0",
@@ -334,7 +339,7 @@ local function WearHat()
 	local hat = db.settings.hat
 	if not hat or InCombatLockdown() then return end
 	local worn = GetInventoryItemID("player", HEAD)
-	if worn == hat or GetItemCount(hat) == 0 then return end
+	if worn == hat or C_Item.GetItemCount(hat) == 0 then return end
 	db.headBefore = worn or db.headBefore
 	C_Item.EquipItemByName(hat, HEAD)
 end
@@ -343,7 +348,7 @@ end
 local function WearHeadBefore()
 	local before = db.headBefore
 	db.headBefore = nil
-	if before and not InCombatLockdown() and GetItemCount(before) > 0 then C_Item.EquipItemByName(before, HEAD) end
+	if before and not InCombatLockdown() and C_Item.GetItemCount(before) > 0 then C_Item.EquipItemByName(before, HEAD) end
 end
 
 -- The icon the professions book uses for Fishing, while the character has it;
@@ -418,7 +423,7 @@ local function OnPreClick(self, mouseButton, down)
 		return
 	end
 	if not fishing then WearHat() end
-	if db.settings.lureAuto and not fishing and ns.LureNeeded() and GetItemCount(db.settings.lure) > 0 then
+	if db.settings.lureAuto and not fishing and ns.LureNeeded() and C_Item.GetItemCount(db.settings.lure) > 0 then
 		-- the lure goes on the pole: that is a cast of its own, so this press
 		-- does only that, and the next one casts
 		self:SetAttribute("macrotext", "/use item:" .. db.settings.lure .. "\n/use " .. FISHING_TOOL)
@@ -670,6 +675,9 @@ events:SetScript("OnEvent", function(self, event, a1, a2, a3)
 		if not GetBindingKey(BINDING) and not db.hinted then
 			db.hinted = true
 			ns.Msg(L["No key bound. Bind one under Key Bindings > AddOns > OneClickFish, or in /ocfish."])
+		end
+		for _, rival in ipairs(RIVALS) do
+			if C_AddOns.IsAddOnLoaded(rival) then ns.Msg(L["RIVAL_LOADED"], rival) end
 		end
 		ns.HUD.Refresh()
 

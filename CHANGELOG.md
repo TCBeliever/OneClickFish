@@ -39,3 +39,16 @@
 - The `OneClickFish` global with `GetStats` and `RegisterCallback` for other addons is gone.
 - Fishing is known by the spells Retail casts: the old ranks from before Mists of Pandaria and Fishing Journal (271990, not a cast) are off the list.
 - THIRD_PARTY_NOTICES.md: what is adapted from EasyFishing, with its MIT License in full.
+
+## 0.3.1 (2026-10-13)
+
+- At login, a word in chat when BetterFishing or EasyFishing is on as well: they switch the same interact and sound settings for the cast, and with two of them putting back each other's values the settings could stay on after fishing.
+
+## 0.3.2 (2026-10-14)
+
+- Patch 12.1.5: the toc lists 120105 as well as 120100.
+
+## 0.3.3 (2026-10-14)
+
+- A Lua error before the cast with a fishing hat picked (Core.lua:342, *attempt to call a nil value*): the game no longer has the old global `GetItemCount`, so the hat, the head piece put back after, and the lure applied by the button now count items with `C_Item.GetItemCount`.
+- Also in this upload, the two versions not uploaded on their own: patch 12.1.5 (the toc lists 120105 as well as 120100), and from 0.3.1, at login a word in chat when BetterFishing or EasyFishing is on as well, since the two put back each other's interact and sound settings and they could stay on after fishing.
