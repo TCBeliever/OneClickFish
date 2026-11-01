@@ -259,6 +259,13 @@ local function Mock(kind, name)
 		GetTexture = function(self) return self.__texture end,
 		SetVertexColor = function(self, r, g, b) self.__vertex = { r, g, b } end,
 		CreateMaskTexture = function() return Mock("MaskTexture") end,
+		-- a slider: setting the value fires OnValueChanged, as a drag does
+		GetThumbTexture = function(self) self.__thumb = self.__thumb or Mock("Texture"); return self.__thumb end,
+		SetValue = function(self, v)
+			self.__value = v
+			if scripts.OnValueChanged then scripts.OnValueChanged(self, v) end
+		end,
+		GetValue = function(self) return self.__value or 0 end,
 		Click = function(self, button, down)
 			button = button or "LeftButton"
 			if scripts.PreClick then scripts.PreClick(self, button, down) end

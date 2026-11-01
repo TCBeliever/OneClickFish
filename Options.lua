@@ -2,29 +2,62 @@ local ADDON, ns = ...
 local L, Skin = ns.L, ns.Skin
 
 -- ===========================================================================
--- The settings window: three tabs. Fishing (the mode, the key, what happens
--- around a cast, the sound), HUD (what is on screen), General (the language,
--- where prices come from).
+-- The settings window, laid out like SmartVoidcore's: a title bar, a tab
+-- strip, the pages of the tab on the left, the page on the right with its
+-- title and a line of explanation. Three tabs: Fishing (the mode and the key,
+-- casting, sound, lure and hat), HUD (the cast button, the session HUD),
+-- General (appearance, prices).
 -- ===========================================================================
 
 local O = {}
 ns.Options = O
 
-local W           = 400
-local TITLE_H     = 28
-local TAB_H       = 24
-local TOP         = TITLE_H + TAB_H - 2   -- title bar and tab strip share a border line each
-local TAB_PAD     = 14
-local PAD         = 14
-local FIELD_X     = 130
-local ROW         = 30
-local SECTION_GAP = 14
-local SCALE       = 1.3
+local W, H      = 600, 440
+local TITLE_H   = 28
+local TAB_H     = 24
+local TOP       = TITLE_H + TAB_H - 2   -- title bar and tab strip share a border line each
+local TAB_PAD   = 14
+local LEFT_W    = 140
+local RIGHT_X   = LEFT_W + 14
+local RIGHT_W   = W - RIGHT_X - 14
+local TREE_ROW  = 22
+local DESC_GAP  = 18
+local FIELD_X   = 120
+local EDIT_W    = 50   -- a box for a number
+local SCALE_MIN, SCALE_MAX = 0.8, 2.0
 
-local TABS = { "fishing", "hud", "general" }
+-- The tabs and their pages, in order; label and desc are locale keys.
+local TABS = {
+	{ key = "fishing", label = "Fishing", nodes = {
+		{ key = "mode",    label = "Fishing mode", desc = "MODE_DESC" },
+		{ key = "casting", label = "Casting",      desc = "CASTING_DESC" },
+		{ key = "sound",   label = "Sound",        desc = "SOUND_DESC" },
+		{ key = "gear",    label = "Lure and hat", desc = "GEAR_DESC" },
+	} },
+	{ key = "hud", label = "HUD", nodes = {
+		{ key = "button",  label = "Cast button",  desc = "BUTTON_DESC" },
+		{ key = "session", label = "Session HUD",  desc = "HUD_DESC" },
+	} },
+	{ key = "general", label = "General", nodes = {
+		{ key = "look",    label = "Appearance",   desc = "LOOK_DESC" },
+		{ key = "prices",  label = "Prices",       desc = "PRICES_DESC" },
+	} },
+}
 
 local main
-local selected = "fishing"
+local selected = { tab = TABS[1].key, node = TABS[1].nodes[1].key }
+
+local function TabOf(key)
+	for _, tab in ipairs(TABS) do
+		if tab.key == key then return tab end
+	end
+end
+
+local function NodeOf(tab, key)
+	for _, node in ipairs(tab.nodes) do
+		if node.key == key then return node end
+	end
+end
 
 function ns.RefreshOptions()
 	if main and main:IsShown() then O.Refresh() end
@@ -103,219 +136,243 @@ local function OnKeyButtonClick(self, mouseButton)
 end
 
 -- ---------------------------------------------------------------------------
--- Pages. A page is a frame with a cursor going down it; these helpers put
--- one thing after another on it. Widgets that show a saved value are kept
--- on the window (f.checks, f.steppers) so Refresh can set them all.
+-- Pages. A page is a column of items, each hung under the one before it, so
+-- a line that wraps pushes the rest down. Layout places them again on every
+-- refresh: a language switch moves where a toggle's label starts. Widgets
+-- that show a saved value are kept on the window (f.checks, f.sliders) so
+-- Refresh can set them all.
 -- ---------------------------------------------------------------------------
 
 local function Percent(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end
-local function Minutes(v) return string.format(L["%d min"], v) end
+
+local function Layout(page)
+	local prev, prevX
+	for _, item in ipairs(page.items) do
+		local x = type(item.x) == "function" and item.x() or item.x
+		item.frame:ClearAllPoints()
+		if prev then
+			item.frame:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", x - prevX, -item.gap)
+		else
+			item.frame:SetPoint("TOPLEFT", x, 0)
+		end
+		if item.fill then item.frame:SetWidth(RIGHT_W - x) end
+		prev, prevX = item.frame, x
+	end
+end
 
 local function NewPage(f, key)
-	local p = CreateFrame("Frame", nil, f)
-	p:SetPoint("TOPLEFT", PAD, -TOP - PAD)
-	p:SetPoint("TOPRIGHT", -PAD, -TOP - PAD)
-	p:SetPoint("BOTTOMRIGHT", -PAD, PAD)   -- a frame without a height draws nothing, children included
-	p.y = 0
+	local p = CreateFrame("Frame", nil, f.detail)
+	p.items = {}
 	f.pages[key] = p
 
-	function p.Section(key)
-		if p.y < 0 then p.y = p.y - SECTION_GAP end
-		local label = ns.Bind(Skin.Label(p, "", "GameFontNormal", "accent"), key)
-		label:SetPoint("TOPLEFT", 0, p.y)
-		local rule = Skin.Fill(p, "ARTWORK", "border", 0.6)
-		rule:SetHeight(1)
-		rule:SetPoint("TOPLEFT", 0, p.y - 17)
-		rule:SetPoint("TOPRIGHT", 0, p.y - 17)
-		p.y = p.y - 26
+	-- fill: the item takes the rest of the line (a paragraph that wraps)
+	local function Add(frame, x, gap, fill)
+		p.items[#p.items + 1] = { frame = frame, x = x, gap = gap, fill = fill }
+		return frame
 	end
-	function p.Check(key, tipKey, get, set)
-		local c = ns.Bind(Skin.Checkbox(p, "", function(checked) set(checked); ns.Changed() end), key)
-		c:SetPoint("TOPLEFT", 0, p.y - 1)
-		if tipKey then Skin.Tooltip(c, key, tipKey) end
+	p.Add = Add
+
+	-- A toggle with its line under it, lined up with the toggle's label. The
+	-- line says what Off does.
+	function p.Toggle(key, descKey, get, set)
+		local c = ns.Bind(Skin.Toggle(p, "", function(checked) set(checked); ns.Changed() end), key)
+		Add(c, 0, 12)
 		c.get = get
 		f.checks[#f.checks + 1] = c
-		p.y = p.y - 26
+		c.desc = ns.Bind(Skin.Label(p, "", nil, "dim"), descKey)
+		c.desc:SetJustifyH("LEFT")
+		Add(c.desc, Skin.ToggleLabelX, 3, true)
 		return c
 	end
-	-- the dim label in front of a control; with a tip, it is hoverable and carries it
-	function p.Field(key, tipKey)
-		if not tipKey then return Skin.Field(p, key, 0, p.y) end
-		local hover = CreateFrame("Frame", nil, p)
-		hover:SetPoint("TOPLEFT", 0, p.y)
-		hover:SetSize(FIELD_X - 4, 20)
-		hover:EnableMouse(true)
-		local text = ns.Bind(Skin.Label(hover, "", nil, "dim"), key)
-		text:SetPoint("LEFT", 0, 0)
-		Skin.Tooltip(hover, key, tipKey)
-		return hover
+	-- a dim label, with the control the caller puts on the returned row at
+	-- the control column
+	function p.Row(key, h)
+		local row = CreateFrame("Frame", nil, p)
+		row:SetSize(RIGHT_W, h or 20)
+		Skin.Field(row, key, 0, -((h or 20) - 20) / 2)
+		return Add(row, 0, 12)
 	end
-	function p.Step(key, tipKey, get, fmt, onStep)
-		p.Field(key, tipKey)
-		local st = Skin.Stepper(p, function(dir) onStep(dir); ns.Changed() end)
-		st:SetPoint("TOPLEFT", FIELD_X, p.y)
-		st.get, st.fmt = get, fmt
-		f.steppers[#f.steppers + 1] = st
-		p.y = p.y - ROW
-		return st
+	-- the title with the value at its right, the bar under them
+	function p.Slider(key, min, max, step, get, onChange)
+		local s = ns.Bind(Skin.Slider(p, RIGHT_W - 20, min, max, step, Percent,
+			function(v) onChange(v); ns.Changed() end), key)
+		Add(s, 0, 12)
+		s.get = get
+		f.sliders[#f.sliders + 1] = s
+		return s
 	end
 	-- a paragraph of dim text, as many lines as it takes
-	function p.Note(key, height)
+	function p.Note(key)
 		local fs = ns.Bind(Skin.Label(p, "", nil, "dim"), key)
-		fs:SetPoint("TOPLEFT", 0, p.y)
-		fs:SetWidth(W - PAD * 2)
 		fs:SetJustifyH("LEFT")
-		p.y = p.y - height
-		return fs
+		return Add(fs, 0, 8, true)
 	end
 	return p
 end
 
-local function BuildFishing(f)
-	local p = NewPage(f, "fishing")
+local function BuildMode(f)
+	local p = NewPage(f, "mode")
 	local S = function() return ns.db.settings end
+	f.enabled = p.Toggle("Fishing mode", "MODE_OFF", function() return S().enabled end, function(v) ns.SetEnabled(v) end)
 
-	f.enabled = p.Check("Fishing mode", "MODE_TIP", function() return S().enabled end, function(v) ns.SetEnabled(v) end)
-
-	Skin.Field(p, "Key", 0, p.y)
-	f.keyButton = Skin.Button(p, "", 150, 20, OnKeyButtonClick)
-	f.keyButton:SetPoint("TOPLEFT", FIELD_X, p.y)
+	local row = p.Row("Key")
+	f.keyButton = Skin.Button(row, "", 150, 20, OnKeyButtonClick)
+	f.keyButton:SetPoint("TOPLEFT", FIELD_X, 0)
 	f.keyButton:RegisterForClicks("AnyUp")
 	Skin.Tooltip(f.keyButton, "Key", "KEY_TIP")
-	f.clear = ns.Bind(Skin.Button(p, "", 60, 20, function() ns.SetKey(nil) end), "Clear")
+	f.clear = ns.Bind(Skin.Button(row, "", 60, 20, function() ns.SetKey(nil) end), "Clear")
 	f.clear:SetPoint("LEFT", f.keyButton, "RIGHT", 6, 0)
-	p.y = p.y - ROW + 4
-	p.Note("KEY_HINT", 30)
-
-	p.Section("Casting")
-	f.autoEquip = p.Check("Equip a fishing pole from your bags", "EQUIP_TIP",
-		function() return S().autoEquip end, function(v) S().autoEquip = v end)
-	f.fastLoot = p.Check("Loot the catch at once", "LOOT_TIP",
-		function() return S().fastLoot end, function(v) S().fastLoot = v end)
-	f.chime = p.Check("Chime when the line lands", "CHIME_TIP",
-		function() return S().chime end, function(v) S().chime = v end)
-
-	p.Section("Sound while the line is out")
-	f.duck = p.Check("Lower music and ambience", "DUCK_TIP",
-		function() return S().duck end, function(v) S().duck = v end)
-	f.music = p.Step("Music", nil, function() return S().musicVol end, Percent, function(dir)
-		S().musicVol = math.max(0, math.min(1, S().musicVol + dir * 0.05))
-		ns.ApplyAudioLevels()
-	end)
-	f.ambience = p.Step("Ambience", nil, function() return S().ambienceVol end, Percent, function(dir)
-		S().ambienceVol = math.max(0, math.min(1, S().ambienceVol + dir * 0.05))
-		ns.ApplyAudioLevels()
-	end)
-	f.boostSFX = p.Check("Louder sound effects", "SFX_TIP",
-		function() return S().boostSFX end, function(v) S().boostSFX = v end)
-	f.bgSound = p.Check("Keep sound in the background", "BG_TIP",
-		function() return S().bgSound end, function(v) S().bgSound = v end)
-
-	-- the lure: the known lures in the bags, as icons
-	p.Section("Lure")
-	p.Field("Lure", "LURE_TIP")
-	f.lure = Skin.IconTray(p, function(id) S().lure = id; ns.Changed() end)
-	f.lure:SetPoint("TOPLEFT", FIELD_X, p.y + 4)
-	p.y = p.y - ROW - 6
-	f.lureAuto = p.Check("Apply before casting", "LURE_AUTO_TIP",
-		function() return S().lureAuto end, function(v) S().lureAuto = v end)
-
-	-- the hat: the known fishing hats in the bags or on the head, as icons
-	p.Section("Hat")
-	p.Field("Fishing hat", "HAT_TIP")
-	f.hat = Skin.IconTray(p, function(id) S().hat = id; ns.Changed() end)
-	f.hat:SetPoint("TOPLEFT", FIELD_X, p.y + 4)
-	p.y = p.y - ROW - 6
-	return p
+	p.Note("KEY_HINT")
 end
 
-local function BuildHud(f)
-	local p = NewPage(f, "hud")
+local function BuildCasting(f)
+	local p = NewPage(f, "casting")
 	local S = function() return ns.db.settings end
+	f.autoEquip = p.Toggle("Equip a fishing pole from your bags", "EQUIP_OFF",
+		function() return S().autoEquip end, function(v) S().autoEquip = v end)
+	f.fastLoot = p.Toggle("Loot the catch at once", "LOOT_OFF",
+		function() return S().fastLoot end, function(v) S().fastLoot = v end)
+	f.chime = p.Toggle("Chime when the line lands", "CHIME_OFF",
+		function() return S().chime end, function(v) S().chime = v end)
+end
 
-	p.Section("On screen")
-	f.showButton = p.Check("Show the cast button", "BUTTON_TIP",
+local function BuildSound(f)
+	local p = NewPage(f, "sound")
+	local S = function() return ns.db.settings end
+	f.duck = p.Toggle("Lower music and ambience", "DUCK_OFF",
+		function() return S().duck end, function(v) S().duck = v end)
+	f.music = p.Slider("Music", 0, 1, 0.05, function() return S().musicVol end, function(v)
+		S().musicVol = v
+		ns.ApplyAudioLevels()
+	end)
+	f.ambience = p.Slider("Ambience", 0, 1, 0.05, function() return S().ambienceVol end, function(v)
+		S().ambienceVol = v
+		ns.ApplyAudioLevels()
+	end)
+	f.boostSFX = p.Toggle("Louder sound effects", "SFX_OFF",
+		function() return S().boostSFX end, function(v) S().boostSFX = v end)
+	f.bgSound = p.Toggle("Keep sound in the background", "BG_OFF",
+		function() return S().bgSound end, function(v) S().bgSound = v end)
+end
+
+-- the lure and the hat: the known ones in the bags (the hat also on the head), as icons
+local function BuildGear(f)
+	local p = NewPage(f, "gear")
+	local S = function() return ns.db.settings end
+	local row = p.Row("Lure", 28)
+	f.lure = Skin.IconTray(row, function(id) S().lure = id; ns.Changed() end)
+	f.lure:SetPoint("TOPLEFT", FIELD_X, 0)
+	f.lureAuto = p.Toggle("Apply before casting", "LURE_AUTO_OFF",
+		function() return S().lureAuto end, function(v) S().lureAuto = v end)
+	row = p.Row("Fishing hat", 28)
+	f.hat = Skin.IconTray(row, function(id) S().hat = id; ns.Changed() end)
+	f.hat:SetPoint("TOPLEFT", FIELD_X, 0)
+end
+
+local function BuildButton(f)
+	local p = NewPage(f, "button")
+	local S = function() return ns.db.settings end
+	f.showButton = p.Toggle("Show the cast button", "BUTTON_OFF",
 		function() return S().showButton end, function(v) S().showButton = v end)
-	f.buttonScale = p.Step("Button size", "BUTTON_SIZE_TIP", function() return ns.db.button.scale end, Percent, function(dir)
-		ns.Button.SetScale(ns.db.button.scale + dir * ns.Button.SCALE_STEP)
-	end)
-	f.minimap = p.Check("Show the minimap button", "MINIMAP_HINT",
+	f.buttonScale = p.Slider("Button size", ns.Button.SCALE_MIN, ns.Button.SCALE_MAX, ns.Button.SCALE_STEP,
+		function() return ns.db.button.scale end, function(v) ns.Button.SetScale(v) end)
+	f.minimap = p.Toggle("Show the minimap button", "MINIMAP_OFF",
 		function() return S().minimap end, function(v) S().minimap = v end)
+end
 
-	p.Section("Session HUD")
-	f.hudShow = p.Check("Show the HUD", "HUD_TIP",
-		function() return ns.db.hud.show ~= "never" end, function(v) ns.db.hud.show = v and "always" or "never" end)
-	f.hudCatches = p.Check("Show catches on the HUD", "CATCHES_TIP",
-		function() return ns.db.hud.catches end, function(v) ns.db.hud.catches = v end)
-	f.idle = p.Step("Hide after", "IDLE_TIP", function() return ns.db.hud.idle end, Minutes, function(dir)
-		ns.db.hud.idle = math.max(ns.HUD.IDLE_MIN, math.min(ns.HUD.IDLE_MAX, ns.db.hud.idle + dir))
+local function BuildSession(f)
+	local p = NewPage(f, "session")
+	local hud = function() return ns.db.hud end
+	f.hudShow = p.Toggle("Show the HUD", "HUD_OFF",
+		function() return hud().show ~= "never" end, function(v) hud().show = v and "always" or "never" end)
+	f.hudCatches = p.Toggle("Show catches on the HUD", "CATCHES_OFF",
+		function() return hud().catches end, function(v) hud().catches = v end)
+
+	-- minutes, typed in
+	local row = p.Row("Hide after")
+	f.idle = Skin.EditBox(row, EDIT_W, function(text)
+		local v = tonumber(text)
+		if v then hud().idle = math.max(ns.HUD.IDLE_MIN, math.min(ns.HUD.IDLE_MAX, math.floor(v))) end
+		ns.Changed()
 	end)
-	f.hudScale = p.Step("Scale", nil, function() return ns.db.hud.scale end, Percent, function(dir)
-		ns.HUD.SetScale(ns.db.hud.scale + dir * ns.HUD.SCALE_STEP)
-	end)
-	Skin.Field(p, "Position", 0, p.y)
-	f.lock = ns.Bind(Skin.Checkbox(p, "", function(checked) ns.db.hud.locked = checked end), "Lock")
-	f.lock:SetPoint("TOPLEFT", FIELD_X, p.y - 1)
-	Skin.Tooltip(f.lock, "Lock", "LOCK_TIP")
-	f.checks[#f.checks + 1] = f.lock
-	f.lock.get = function() return ns.db.hud.locked end
-	f.resetPositions = ns.Bind(Skin.Button(p, "", 100, 20, function()
+	f.idle:SetNumeric(true)
+	f.idle:SetMaxLetters(2)
+	f.idle:SetJustifyH("CENTER")
+	f.idle:SetPoint("TOPLEFT", FIELD_X, 0)
+	Skin.Tooltip(f.idle, "Hide after", "IDLE_TIP")
+	local unit = ns.Bind(Skin.Label(row, "", nil, "dim"), "minutes")
+	unit:SetPoint("LEFT", f.idle, "RIGHT", 6, 0)
+
+	f.hudScale = p.Slider("HUD size", ns.HUD.SCALE_MIN, ns.HUD.SCALE_MAX, ns.HUD.SCALE_STEP,
+		function() return hud().scale end, function(v) ns.HUD.SetScale(v) end)
+	f.lock = p.Toggle("Lock the HUD and the cast button", "LOCK_OFF",
+		function() return hud().locked end, function(v) hud().locked = v end)
+
+	local buttons = CreateFrame("Frame", nil, p)
+	buttons:SetSize(RIGHT_W, 22)
+	p.Add(buttons, 0, 14)
+	f.resetPositions = ns.Bind(Skin.Button(buttons, "", 100, 22, function()
 		ns.HUD.ResetPosition()
 		ns.Button.ResetPosition()
 	end), "Reset positions")
-	f.resetPositions:SetPoint("LEFT", f.lock, "RIGHT", 16, 0)
-	p.y = p.y - ROW
-	f.resetSession = ns.Bind(Skin.Button(p, "", 100, 20, function() ns.ResetSession() end), "Reset session")
-	f.resetSession:SetPoint("TOPLEFT", FIELD_X, p.y)
-	p.y = p.y - ROW
-	return p
+	f.resetPositions:SetPoint("TOPLEFT")
+	f.resetSession = ns.Bind(Skin.Button(buttons, "", 100, 22, function() ns.ResetSession() end), "Reset session")
+	f.resetSession:SetPoint("LEFT", f.resetPositions, "RIGHT", 8, 0)
 end
 
--- The auction addons the prices can come from, and whether they are there.
-local PRICE_ADDONS = { "Auctionator", "TradeSkillMaster" }
+local function ThemeItems()
+	local items = {}
+	for _, theme in ipairs(Skin.THEMES) do
+		items[#items + 1] = { label = L["THEME_" .. theme.key], value = theme.key, swatch = theme.colors.accent }
+	end
+	return items
+end
 
-local function BuildGeneral(f)
-	local p = NewPage(f, "general")
-
-	Skin.Field(p, "Language", 0, p.y)
-	f.language = Skin.Dropdown(p, 180, function()
+local function BuildLook(f)
+	local p = NewPage(f, "look")
+	local row = p.Row("Language")
+	f.language = Skin.Dropdown(row, 200, function()
 		local items = {}
 		for _, entry in ipairs(ns.LANGUAGES) do
 			items[#items + 1] = { label = entry.label or L[entry.key], value = entry.code }
 		end
 		return items
 	end, function(_, item) ns.SetLanguage(item.value) end)
-	f.language:SetPoint("TOPLEFT", FIELD_X, p.y)
-	p.y = p.y - ROW
+	f.language:SetPoint("TOPLEFT", FIELD_X, 0)
 
-	p.Section("Prices")
-	p.Note("PRICES_NOTE", 56)
+	row = p.Row("Theme")
+	f.theme = Skin.Dropdown(row, 200, ThemeItems, function(_, item) ns.SetTheme(item.value) end)
+	f.theme:SetPoint("TOPLEFT", FIELD_X, 0)
+
+	f.windowScale = p.Slider("Window scale", SCALE_MIN, SCALE_MAX, 0.1,
+		function() return ns.db.settings.windowScale end, function(v) O.SetWindowScale(v) end)
+end
+
+-- The auction addons the prices can come from, and whether they are there.
+local PRICE_ADDONS = { "Auctionator", "TradeSkillMaster" }
+
+local function BuildPrices(f)
+	local p = NewPage(f, "prices")
 	f.priceAddons = {}
 	for _, name in ipairs(PRICE_ADDONS) do
-		local label = Skin.Label(p, name)
-		label:SetPoint("TOPLEFT", 0, p.y - 4)
-		local state = Skin.Label(p, "")
-		state:SetPoint("TOPLEFT", FIELD_X, p.y - 4)
+		local row = CreateFrame("Frame", nil, p)
+		row:SetSize(RIGHT_W, 20)
+		p.Add(row, 0, 4)
+		Skin.Label(row, name):SetPoint("TOPLEFT", 0, -4)
+		local state = Skin.Label(row, "")
+		state:SetPoint("TOPLEFT", FIELD_X, -4)
 		f.priceAddons[name] = state
-		p.y = p.y - 22
 	end
-	return p
 end
 
 -- ---------------------------------------------------------------------------
--- Tabs
+-- Top: the tabs. Left: the pages of the selected tab. Right: the page.
 -- ---------------------------------------------------------------------------
 
-local function TabLabel(key)
-	if key == "fishing" then return L["Fishing"] end
-	if key == "hud" then return "HUD" end
-	return L["General"]
-end
-
-local function CreateTab(parent, key)
+local function CreateTab(parent, tab)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetHeight(TAB_H - 2)   -- between the strip's two border lines
-	b.key = key
+	b.key = tab.key
 	b.sel = Skin.Fill(b, "BACKGROUND", "selected")
 	b.sel:SetAllPoints()
 	b.bar = Skin.Fill(b, "BORDER", "accent")
@@ -333,33 +390,83 @@ local function CreateTab(parent, key)
 	return b
 end
 
-function O.Select(key)
-	selected = key
+local function CreateTreeRow(parent)
+	local b = Skin.Row(parent)
+	b:SetHeight(TREE_ROW)
+	b.text = Skin.Label(b, "", "GameFontHighlight")
+	b.text:SetPoint("LEFT", 10, 0)
+	b.text:SetPoint("RIGHT", -4, 0)
+	b.text:SetJustifyH("LEFT")
+	b.text:SetWordWrap(false)
+	b:SetScript("OnClick", function(self) O.Select(self.tab, self.node) end)
+	return b
+end
+
+function O.Select(tabKey, nodeKey)
+	local tab = TabOf(tabKey)
+	if not tab then return end
+	if not NodeOf(tab, nodeKey) then nodeKey = tab.nodes[1].key end
+	selected = { tab = tabKey, node = nodeKey }
 	O.Refresh()
 end
 
+function O.GetSelection() return selected.tab, selected.node end
+
 local function RefreshTabs()
 	local x = 1
-	for _, key in ipairs(TABS) do
-		local b = main.tabs[key]
-		b.text:SetText(TabLabel(key))
-		b.sel:SetShown(selected == key)
-		b.bar:SetShown(selected == key)
+	for _, tab in ipairs(TABS) do
+		local b = main.tabs[tab.key]
+		b.text:SetText(L[tab.label])
+		b.sel:SetShown(selected.tab == tab.key)
+		b.bar:SetShown(selected.tab == tab.key)
 		b:SetWidth(b.text:GetStringWidth() + TAB_PAD * 2)
 		b:ClearAllPoints()
 		b:SetPoint("TOPLEFT", x, -1)
 		x = x + b:GetWidth()
 	end
-	for key, page in pairs(main.pages) do page:SetShown(key == selected) end
-	main:SetHeight(TOP + PAD - main.pages[selected].y + PAD)
+end
+
+local function RefreshTree()
+	local tab = TabOf(selected.tab)
+	local y = -6
+	for i, node in ipairs(tab.nodes) do
+		local b = main.treeRows[i]
+		if not b then
+			b = CreateTreeRow(main.tree)
+			main.treeRows[i] = b
+		end
+		b.tab, b.node = tab.key, node.key
+		b:ClearAllPoints()
+		b:SetPoint("TOPLEFT", 1, y)
+		b:SetPoint("TOPRIGHT", -1, y)
+		b.text:SetText(L[node.label])
+		b:SetSelected(selected.node == node.key)
+		b:Show()
+		y = y - TREE_ROW
+	end
+	for i = #tab.nodes + 1, #main.treeRows do main.treeRows[i]:Hide() end
+end
+
+local function RefreshDetail()
+	local node = NodeOf(TabOf(selected.tab), selected.node)
+	local d = main.detail
+	d.title:SetText(L[node.label])
+	d.desc:SetText(L[node.desc])
+	for key, page in pairs(main.pages) do
+		page:SetShown(key == node.key)
+		Layout(page)
+	end
 end
 
 function O.Refresh()
 	if not main then return end
 	Skin.HideOptionList()
 	RefreshTabs()
+	RefreshTree()
+	RefreshDetail()
 	for _, c in ipairs(main.checks) do c:SetChecked(c.get()) end
-	for _, st in ipairs(main.steppers) do st.value:SetText(st.fmt(st.get())) end
+	for _, s in ipairs(main.sliders) do s:SetValue(s.get()) end
+	if not main.idle:HasFocus() then main.idle:SetText(tostring(ns.db.hud.idle)) end
 	local b = main.keyButton
 	if b.listening then
 		b.label:SetTextColor(Skin.Color("accent"))
@@ -375,10 +482,32 @@ function O.Refresh()
 	for _, entry in ipairs(ns.LANGUAGES) do
 		if entry.code == code then main.language:SetValueText(entry.label or L[entry.key]) end
 	end
+	main.theme:SetValueText(L["THEME_" .. Skin.theme])
 	for name, state in pairs(main.priceAddons) do
 		local there = C_AddOns.IsAddOnLoaded(name)
 		state:SetText(Skin.Text(there and "ok" or "dim", L[there and "STATE_installed" or "STATE_missing"]))
 	end
+end
+
+function O.SetWindowScale(scale)
+	scale = math.max(SCALE_MIN, math.min(SCALE_MAX, scale))
+	scale = math.floor(scale * 10 + 0.5) / 10
+	ns.db.settings.windowScale = scale
+	if main then main:SetScale(scale) end
+	ns.RefreshOptions()
+end
+
+local function TitleText()
+	local version = C_AddOns.GetAddOnMetadata(ADDON, "Version") or ""
+	return Skin.Text("accent", "OneClick") .. "Fish " .. Skin.Text("dim", "v" .. version)
+end
+
+-- key: one of Skin.THEMES; anything else reads as the first
+function ns.SetTheme(key)
+	Skin.SetTheme(key)
+	ns.db.settings.theme = Skin.theme
+	if main then main.title:SetText(TitleText()) end
+	ns.Changed()   -- the inline colours: the HUD, the cast button, this window
 end
 
 -- ---------------------------------------------------------------------------
@@ -387,8 +516,8 @@ end
 
 local function CreateMain()
 	local f = CreateFrame("Frame", "OneClickFishFrame", UIParent, "BackdropTemplate")
-	f:SetWidth(W)
-	f:SetScale(SCALE)
+	f:SetSize(W, H)
+	f:SetScale(ns.db.settings.windowScale)
 	f:SetPoint("CENTER")
 	f:SetFrameStrata("HIGH")
 	f:SetToplevel(true)
@@ -405,8 +534,7 @@ local function CreateMain()
 	bar:SetPoint("TOPLEFT")
 	bar:SetPoint("TOPRIGHT")
 	bar:SetHeight(TITLE_H)
-	local version = C_AddOns.GetAddOnMetadata(ADDON, "Version") or ""
-	f.title = Skin.Label(bar, Skin.Text("accent", "OneClick") .. "Fish " .. Skin.Text("dim", "v" .. version), "GameFontHighlight")
+	f.title = Skin.Label(bar, TitleText(), "GameFontHighlight")
 	f.title:SetPoint("LEFT", 10, 0)
 	f.close = Skin.CloseButton(bar, function() f:Hide() end)
 	f.close:SetPoint("RIGHT", -4, 0)
@@ -416,12 +544,40 @@ local function CreateMain()
 	tabBar:SetPoint("TOPRIGHT", 0, -TITLE_H + 1)
 	tabBar:SetHeight(TAB_H)
 	f.tabs = {}
-	for _, key in ipairs(TABS) do f.tabs[key] = CreateTab(tabBar, key) end
+	for _, tab in ipairs(TABS) do f.tabs[tab.key] = CreateTab(tabBar, tab) end
 
-	f.pages, f.checks, f.steppers = {}, {}, {}
-	BuildFishing(f)
-	BuildHud(f)
-	BuildGeneral(f)
+	local tree = Skin.Panel(f, "panel")
+	tree:SetPoint("TOPLEFT", 0, -TOP)
+	tree:SetPoint("BOTTOMLEFT")
+	tree:SetWidth(LEFT_W)
+	f.tree = tree
+	f.treeRows = {}
+
+	local d = CreateFrame("Frame", nil, f)
+	d:SetPoint("TOPLEFT", RIGHT_X, -TOP - 12)
+	d:SetSize(RIGHT_W, H - TOP - 24)
+	f.detail = d
+	d.title = Skin.Label(d, "", "GameFontHighlightLarge")
+	d.title:SetPoint("TOPLEFT", 0, 0)
+	d.desc = Skin.Label(d, "", nil, "dim")
+	d.desc:SetPoint("TOPLEFT", 0, -22)
+	d.desc:SetWidth(RIGHT_W)
+	d.desc:SetJustifyH("LEFT")
+
+	f.pages, f.checks, f.sliders = {}, {}, {}
+	BuildMode(f)
+	BuildCasting(f)
+	BuildSound(f)
+	BuildGear(f)
+	BuildButton(f)
+	BuildSession(f)
+	BuildLook(f)
+	BuildPrices(f)
+	for _, page in pairs(f.pages) do
+		-- under the page's line of explanation, however many lines it takes
+		page:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -DESC_GAP)
+		page:SetPoint("BOTTOMRIGHT")   -- a frame without a height draws nothing, children included
+	end
 
 	f:SetScript("OnShow", function()
 		O.Refresh()
@@ -447,9 +603,7 @@ function O.Toggle()
 end
 ns.ToggleOptions = O.Toggle
 
--- for the tests
-function O.GetFrame() return main end
-function O.GetSelection() return selected end
+function O.GetFrame() return main end   -- for the tests
 
 -- An entry in the game's own Options > AddOns list: a button that opens the window.
 function O.RegisterInGame()

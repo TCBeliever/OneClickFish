@@ -88,10 +88,12 @@ for f in files:
 
 key_re = re.compile(r'L\["([^"]+)"\]')
 prefix_re = re.compile(r'"([A-Z_]+_)"\s*\.\.')
-helper_re = re.compile(r'\b(?:Bind|Field|Check|Step|Section|Tooltip)\(([^\n]*)')
+helper_re = re.compile(r'\b(?:Bind|Field|Toggle|Row|Slider|Tooltip)\(([^\n]*)')
+page_re = re.compile(r'\b(?:label|desc) = "([^"]+)"')   # the tabs and pages of the settings window
 literal_re = re.compile(r'"([^"\n]*)"')
 for f, src in code_files:
     used |= set(key_re.findall(src))
+    used |= set(page_re.findall(src))
     prefixes |= set(prefix_re.findall(src))
     for m in helper_re.finditer(src):
         for lit in literal_re.findall(m.group(1)):

@@ -89,7 +89,8 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 --
 --   settings = { enabled=, autoEquip=, fastLoot=, chime=, duck=, musicVol=, ambienceVol=, boostSFX=, bgSound=,
 --                showButton=, minimap=, lure= (itemID), lureAuto=, hat= (itemID),
---                locale= ("enUS" | "zhTW"; absent = follow the game) },
+--                locale= ("enUS" | "zhTW"; absent = follow the game),
+--                theme= (a key of Skin.THEMES), windowScale= (the settings window) },
 --   headBefore = what was on the head before the hat, while the hat is on
 --   hud      = { show = "always" | "never", catches=, idle= (minutes without a cast before it goes),
 --                scale=, locked= (the cast button too), point=, relPoint=, x=, y= },
@@ -101,7 +102,8 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 
 ns.defaults = {
 	settings = { enabled = true, autoEquip = true, fastLoot = true, chime = true, duck = true, musicVol = 0.15,
-		ambienceVol = 0.10, boostSFX = false, bgSound = true, showButton = true, minimap = true, lureAuto = false },
+		ambienceVol = 0.10, boostSFX = false, bgSound = true, showButton = true, minimap = true, lureAuto = false,
+		theme = "tide", windowScale = 1.3 },
 	hud = { show = "always", catches = true, idle = 5, scale = 1.0, locked = false, point = "CENTER",
 		relPoint = "CENTER", x = 330, y = 20 },
 	button = { point = "CENTER", relPoint = "CENTER", x = 0, y = -140, scale = 1.0 },
@@ -121,6 +123,7 @@ local function InitDB()
 	db.session.loot = db.session.loot or {}
 	ns.db = db
 	ns.ApplyLocale(db.settings.locale or GetLocale())
+	ns.Skin.SetTheme(db.settings.theme)
 end
 
 -- ---------------------------------------------------------------------------

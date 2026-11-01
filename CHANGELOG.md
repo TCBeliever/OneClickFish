@@ -52,3 +52,11 @@
 
 - A Lua error before the cast with a fishing hat picked (Core.lua:342, *attempt to call a nil value*): the game no longer has the old global `GetItemCount`, so the hat, the head piece put back after, and the lure applied by the button now count items with `C_Item.GetItemCount`.
 - Also in this upload, the two versions not uploaded on their own: patch 12.1.5 (the toc lists 120105 as well as 120100), and from 0.3.1, at login a word in chat when BetterFishing or EasyFishing is on as well, since the two put back each other's interact and sound settings and they could stay on after fishing.
+
+## 0.4.0 (2026-11-01)
+
+- The settings window is laid out like SmartVoidcore's: a tab strip (Fishing, HUD, General), the tab's pages on the left (Fishing mode, Casting, Sound, Lure and hat; Cast button, Session HUD; Appearance, Prices), the page on the right under its title and a line of explanation.
+- Two themes, picked under General > Appearance: Tide (blue) and Obsidian (black-gold). They colour the HUD as well; amber, green and red mean the same in both. The window's size is set there too (130% as before).
+- Switches read Off left of the track and On right of it, the side in force lit; the line under a switch says what Off does and lines up with its label. The longer explanations moved from tooltips to the page they belong to.
+- Music, ambience, the cast button's size, the HUD's size and the window's size are sliders, the title above with the value at its right; the minutes before the HUD hides are typed in (1 to 30).
+- zhTW wording shorter and plainer throughout the window; the English smoothed as well.
