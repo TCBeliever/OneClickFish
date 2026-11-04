@@ -1,9 +1,9 @@
 ## Interface: 120100, 120105
 ## Title: |cff66ccffOneClick|rFish
 ## Notes: One key casts and loots. A session HUD tracks catches, value and gold per hour.
-## Notes-zhTW: 一鍵拋竿收竿，外加本次釣魚的漁獲、價值與每小時收益統計。
+## Notes-zhTW: 一個鍵拋竿和收竿，HUD 統計漁獲與每小時收益。
 ## Author: Venser
-## Version: 0.4.1
+## Version: 0.4.3
 ## SavedVariables: OneClickFishDB
 ## IconTexture: Interface\Icons\Trade_Fishing
 ## Category: venMOD

@@ -12,7 +12,7 @@ local L, Skin = ns.L, ns.Skin
 local O = {}
 ns.Options = O
 
-local W, H      = 600, 470   -- the Session HUD page, the longest, with room under it
+local W, H      = 600, 440
 local TITLE_H   = 28
 local TAB_H     = 24
 local TOP       = TITLE_H + TAB_H - 2   -- title bar and tab strip share a border line each
@@ -26,20 +26,21 @@ local FIELD_X   = 120
 local EDIT_W    = 50   -- a box for a number
 local SCALE_MIN, SCALE_MAX = 0.8, 2.0
 
--- The tabs and their pages, in order; label and desc are locale keys.
+-- The tabs and their pages, in order; label and desc are locale keys. A page
+-- has a line under its title only for what holds for the whole page.
 local TABS = {
 	{ key = "fishing", label = "Fishing", nodes = {
-		{ key = "mode",    label = "Fishing mode", desc = "MODE_DESC" },
-		{ key = "casting", label = "Casting",      desc = "CASTING_DESC" },
+		{ key = "mode",    label = "Fishing mode" },
+		{ key = "casting", label = "Casting" },
 		{ key = "sound",   label = "Sound",        desc = "SOUND_DESC" },
 		{ key = "gear",    label = "Lure and hat", desc = "GEAR_DESC" },
 	} },
 	{ key = "hud", label = "HUD", nodes = {
-		{ key = "button",  label = "Cast button",  desc = "BUTTON_DESC" },
-		{ key = "session", label = "Session HUD",  desc = "HUD_DESC" },
+		{ key = "button",  label = "Cast button" },
+		{ key = "session", label = "Session HUD" },
 	} },
 	{ key = "general", label = "General", nodes = {
-		{ key = "look",    label = "Appearance",   desc = "LOOK_DESC" },
+		{ key = "look",    label = "Appearance" },
 		{ key = "prices",  label = "Prices",       desc = "PRICES_DESC" },
 	} },
 }
@@ -172,16 +173,14 @@ local function NewPage(f, key)
 	end
 	p.Add = Add
 
-	-- A toggle with its line under it, lined up with the toggle's label. The
-	-- line says what Off does.
-	function p.Toggle(key, descKey, get, set)
+	-- A toggle: its label names what it does; anything a player needs to
+	-- know beyond that is in its tooltip, not on the page.
+	function p.Toggle(key, tipKey, get, set)
 		local c = ns.Bind(Skin.Toggle(p, "", function(checked) set(checked); ns.Changed() end), key)
 		Add(c, 0, 12)
 		c.get = get
 		f.checks[#f.checks + 1] = c
-		c.desc = ns.Bind(Skin.Label(p, "", nil, "dim"), descKey)
-		c.desc:SetJustifyH("LEFT")
-		Add(c.desc, Skin.ToggleLabelX, 3, true)
+		if tipKey then Skin.Tooltip(c, key, tipKey) end
 		return c
 	end
 	-- a dim label, with the control the caller puts on the returned row at
@@ -213,7 +212,7 @@ end
 local function BuildMode(f)
 	local p = NewPage(f, "mode")
 	local S = function() return ns.db.settings end
-	f.enabled = p.Toggle("Fishing mode", "MODE_OFF", function() return S().enabled end, function(v) ns.SetEnabled(v) end)
+	f.enabled = p.Toggle("Fishing mode", "MODE_TIP", function() return S().enabled end, function(v) ns.SetEnabled(v) end)
 
 	local row = p.Row("Key")
 	f.keyButton = Skin.Button(row, "", 150, 20, OnKeyButtonClick)
@@ -228,18 +227,18 @@ end
 local function BuildCasting(f)
 	local p = NewPage(f, "casting")
 	local S = function() return ns.db.settings end
-	f.autoEquip = p.Toggle("Equip a fishing pole from your bags", "EQUIP_OFF",
+	f.autoEquip = p.Toggle("Equip a fishing pole from your bags", "EQUIP_TIP",
 		function() return S().autoEquip end, function(v) S().autoEquip = v end)
-	f.fastLoot = p.Toggle("Loot the catch at once", "LOOT_OFF",
+	f.fastLoot = p.Toggle("Auto loot", "LOOT_TIP",
 		function() return S().fastLoot end, function(v) S().fastLoot = v end)
-	f.chime = p.Toggle("Chime when the line lands", "CHIME_OFF",
+	f.chime = p.Toggle("Chime on cast", "CHIME_TIP",
 		function() return S().chime end, function(v) S().chime = v end)
 end
 
 local function BuildSound(f)
 	local p = NewPage(f, "sound")
 	local S = function() return ns.db.settings end
-	f.duck = p.Toggle("Lower music and ambience", "DUCK_OFF",
+	f.duck = p.Toggle("Lower music and ambience", nil,
 		function() return S().duck end, function(v) S().duck = v end)
 	f.music = p.Slider("Music", 0, 1, 0.05, function() return S().musicVol end, function(v)
 		S().musicVol = v
@@ -249,9 +248,9 @@ local function BuildSound(f)
 		S().ambienceVol = v
 		ns.ApplyAudioLevels()
 	end)
-	f.boostSFX = p.Toggle("Louder sound effects", "SFX_OFF",
+	f.boostSFX = p.Toggle("Louder sound effects", nil,
 		function() return S().boostSFX end, function(v) S().boostSFX = v end)
-	f.bgSound = p.Toggle("Keep sound in the background", "BG_OFF",
+	f.bgSound = p.Toggle("Keep sound in the background", "BG_TIP",
 		function() return S().bgSound end, function(v) S().bgSound = v end)
 end
 
@@ -262,30 +261,32 @@ local function BuildGear(f)
 	local row = p.Row("Lure", 28)
 	f.lure = Skin.IconTray(row, function(id) S().lure = id; ns.Changed() end)
 	f.lure:SetPoint("TOPLEFT", FIELD_X, 0)
-	f.lureAuto = p.Toggle("Apply before casting", "LURE_AUTO_OFF",
+	f.lureAuto = p.Toggle("Apply before casting", "LURE_AUTO_TIP",
 		function() return S().lureAuto end, function(v) S().lureAuto = v end)
 	row = p.Row("Fishing hat", 28)
 	f.hat = Skin.IconTray(row, function(id) S().hat = id; ns.Changed() end)
 	f.hat:SetPoint("TOPLEFT", FIELD_X, 0)
+	row:EnableMouse(true)   -- for the tooltip over the label; the icons keep their own
+	Skin.Tooltip(row, "Fishing hat", "HAT_TIP")
 end
 
 local function BuildButton(f)
 	local p = NewPage(f, "button")
 	local S = function() return ns.db.settings end
-	f.showButton = p.Toggle("Show the cast button", "BUTTON_OFF",
+	f.showButton = p.Toggle("Show the cast button", "BUTTON_TIP",
 		function() return S().showButton end, function(v) S().showButton = v end)
 	f.buttonScale = p.Slider("Button size", ns.Button.SCALE_MIN, ns.Button.SCALE_MAX, ns.Button.SCALE_STEP,
 		function() return ns.db.button.scale end, function(v) ns.Button.SetScale(v) end)
-	f.minimap = p.Toggle("Show the minimap button", "MINIMAP_OFF",
+	f.minimap = p.Toggle("Show the minimap button", "MINIMAP_TIP",
 		function() return S().minimap end, function(v) S().minimap = v end)
 end
 
 local function BuildSession(f)
 	local p = NewPage(f, "session")
 	local hud = function() return ns.db.hud end
-	f.hudShow = p.Toggle("Show the HUD", "HUD_OFF",
+	f.hudShow = p.Toggle("Show the HUD", "HUD_TIP",
 		function() return hud().show ~= "never" end, function(v) hud().show = v and "always" or "never" end)
-	f.hudCatches = p.Toggle("Show catches on the HUD", "CATCHES_OFF",
+	f.hudCatches = p.Toggle("List catches", nil,
 		function() return hud().catches end, function(v) hud().catches = v end)
 
 	-- minutes, typed in
@@ -303,13 +304,13 @@ local function BuildSession(f)
 	local unit = ns.Bind(Skin.Label(row, "", nil, "dim"), "minutes")
 	unit:SetPoint("LEFT", f.idle, "RIGHT", 6, 0)
 
-	f.hudScale = p.Slider("HUD size", ns.HUD.SCALE_MIN, ns.HUD.SCALE_MAX, ns.HUD.SCALE_STEP,
+	f.hudScale = p.Slider("Size", ns.HUD.SCALE_MIN, ns.HUD.SCALE_MAX, ns.HUD.SCALE_STEP,
 		function() return hud().scale end, function(v) ns.HUD.SetScale(v) end)
-	f.hudAlpha = p.Slider("Background opacity", ns.HUD.ALPHA_MIN, ns.HUD.ALPHA_MAX, ns.HUD.ALPHA_STEP,
+	f.hudAlpha = p.Slider("Background", ns.HUD.ALPHA_MIN, ns.HUD.ALPHA_MAX, ns.HUD.ALPHA_STEP,
 		function() return hud().bgAlpha end, function(v) ns.HUD.SetBackgroundAlpha(v) end)
-	f.hudBorder = p.Toggle("Show the HUD border", "BORDER_OFF",
+	f.hudBorder = p.Toggle("Show border", nil,
 		function() return hud().border end, function(v) ns.HUD.SetBorder(v) end)
-	f.lock =p.Toggle("Lock the HUD and the cast button", "LOCK_OFF",
+	f.lock = p.Toggle("Lock positions", "LOCK_TIP",
 		function() return hud().locked end, function(v) hud().locked = v end)
 
 	local buttons = CreateFrame("Frame", nil, p)
@@ -322,6 +323,7 @@ local function BuildSession(f)
 	f.resetPositions:SetPoint("TOPLEFT")
 	f.resetSession = ns.Bind(Skin.Button(buttons, "", 100, 22, function() ns.ResetSession() end), "Reset session")
 	f.resetSession:SetPoint("LEFT", f.resetPositions, "RIGHT", 8, 0)
+	Skin.Tooltip(f.resetSession, "Reset session", "RESET_TIP")
 end
 
 local function ThemeItems()
@@ -455,9 +457,14 @@ local function RefreshDetail()
 	local node = NodeOf(TabOf(selected.tab), selected.node)
 	local d = main.detail
 	d.title:SetText(L[node.label])
-	d.desc:SetText(L[node.desc])
+	d.desc:SetText(node.desc and L[node.desc] or "")
+	d.desc:SetShown(node.desc ~= nil)
 	for key, page in pairs(main.pages) do
 		page:SetShown(key == node.key)
+		-- under the page's line, however many lines it takes; with none, under the title
+		page:ClearAllPoints()
+		page:SetPoint("BOTTOMRIGHT")   -- a frame without a height draws nothing, children included
+		page:SetPoint("TOPLEFT", node.desc and d.desc or d.title, "BOTTOMLEFT", 0, -DESC_GAP)
 		Layout(page)
 	end
 end
@@ -576,12 +583,7 @@ local function CreateMain()
 	BuildButton(f)
 	BuildSession(f)
 	BuildLook(f)
-	BuildPrices(f)
-	for _, page in pairs(f.pages) do
-		-- under the page's line of explanation, however many lines it takes
-		page:SetPoint("TOPLEFT", d.desc, "BOTTOMLEFT", 0, -DESC_GAP)
-		page:SetPoint("BOTTOMRIGHT")   -- a frame without a height draws nothing, children included
-	end
+	BuildPrices(f)   -- each page is placed under the title or its line by RefreshDetail
 
 	f:SetScript("OnShow", function()
 		O.Refresh()

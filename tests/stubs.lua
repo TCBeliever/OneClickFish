@@ -228,8 +228,16 @@ local function Mock(kind, name)
 			if was and scripts.OnHide then scripts.OnHide(self) end
 		end,
 		SetShown = function(self, v) if v then self:Show() else self:Hide() end end,
-		SetText = function(self, text) self.__text = text end,
+		SetText = function(self, text) self.__text = text; self.__lines = nil end,   -- a tooltip: its first line
 		GetText = function(self) return self.__text end,
+		-- tooltips: SetOwner clears, SetText is line 1, AddLine adds one
+		SetOwner = function(self) self.__text, self.__lines = nil, nil end,
+		AddLine = function(self, text) self.__lines = self.__lines or {}; self.__lines[#self.__lines + 1] = text end,
+		NumLines = function(self) return (self.__text and 1 or 0) + #(self.__lines or {}) end,
+		HookScript = function(self, n, fn)
+			local prev = scripts[n]
+			scripts[n] = prev and function(...) prev(...); fn(...) end or fn
+		end,
 		GetName = function(self) return self.__name end,
 		CreateFontString = function() return Mock("FontString") end,
 		CreateTexture = function() return Mock("Texture") end,

@@ -56,16 +56,24 @@ local function ShowTooltip(self)
 	end
 	tooltip:SetOwner(self, "ANCHOR_RIGHT")
 	tooltip:SetText("|cff66ccffOneClick|rFish")
-	tooltip:AddLine(L["BUTTON_WHAT"], Skin.Color("dim"))
-	tooltip:AddLine(" ")
+	-- what the frame's colour means, while it has one
+	if ns.IsBobberReady() then
+		tooltip:AddLine(L["BUTTON_READY"], Skin.Color("ok"))
+	elseif ns.LureNeeded() then
+		tooltip:AddLine(L["BUTTON_NO_LURE"], Skin.Color("warn"))
+	end
+	local first = tooltip:NumLines() + 1
 	tooltip:AddLine(L["BUTTON_LEFT"], 1, 1, 1)
-	tooltip:AddLine(L["BUTTON_RIGHT"], 1, 1, 1)
+	tooltip:AddLine(L["TIP_RIGHT"], 1, 1, 1)
 	tooltip:AddLine(L["BUTTON_SHIFT"], Skin.Color("dim"))
-	tooltip:AddLine(L["BUTTON_DRAG"], Skin.Color("dim"))
-	-- the two lines that matter, in the header's larger font
-	for i = 4, 5 do
+	if not ns.db.hud.locked then tooltip:AddLine(L["TIP_DRAG"], Skin.Color("dim")) end
+	-- the two clicks that matter in the header's larger font; the rest in the
+	-- normal one (a line keeps its font from the last time it was shown)
+	for i = 2, tooltip:NumLines() do
 		local line = _G["OneClickFishTooltipTextLeft" .. i]
-		if line then line:SetFontObject("GameTooltipHeaderText") end
+		if line then
+			line:SetFontObject((i == first or i == first + 1) and "GameTooltipHeaderText" or "GameTooltipText")
+		end
 	end
 	tooltip:Show()
 

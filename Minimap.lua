@@ -37,7 +37,8 @@ local function ShowTooltip(self)
 	local on = ns.IsEnabled()
 	GameTooltip:AddLine(Skin.Text(on and "ok" or "dim", L[on and "MODE_on" or "MODE_off"]))
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine(L["MINIMAP_HINT"], Skin.Color("dim"))
+	GameTooltip:AddLine(L["MINIMAP_LEFT"], Skin.Color("dim"))
+	GameTooltip:AddLine(L["TIP_RIGHT"], Skin.Color("dim"))
 	GameTooltip:Show()
 end
 

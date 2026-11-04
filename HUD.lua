@@ -187,7 +187,10 @@ end
 local function ShowTooltip(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 	GameTooltip:AddLine("|cff66ccffOneClick|rFish")
-	GameTooltip:AddLine(L["HUD_HINT"], Skin.Color("dim"))
+	GameTooltip:AddLine(L["TIP_RIGHT"], Skin.Color("dim"))
+	GameTooltip:AddLine(L["HUD_WHEEL"], Skin.Color("dim"))
+	GameTooltip:AddLine(L["HUD_CTRL_WHEEL"], Skin.Color("dim"))
+	if not ns.db.hud.locked then GameTooltip:AddLine(L["TIP_DRAG"], Skin.Color("dim")) end
 	GameTooltip:Show()
 end
 

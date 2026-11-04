@@ -467,7 +467,7 @@ function ns.SetKey(key)
 	if key then
 		local taken = GetBindingAction(key)
 		if taken and taken ~= "" and taken ~= BINDING then
-			ns.Msg(L["%s was taken from %s."], GetBindingText(key), GetBindingText(taken, nil, true) or taken)
+			ns.Msg(L["KEY_TAKEN"], GetBindingText(key), GetBindingText(taken, nil, true) or taken)
 		end
 	end
 	local k1, k2 = GetBindingKey(BINDING)
@@ -677,7 +677,7 @@ events:SetScript("OnEvent", function(self, event, a1, a2, a3)
 		ns.Button.Refresh()
 		if not GetBindingKey(BINDING) and not db.hinted then
 			db.hinted = true
-			ns.Msg(L["No key bound. Bind one under Key Bindings > AddOns > OneClickFish, or in /ocfish."])
+			ns.Msg(L["NO_KEY"])
 		end
 		for _, rival in ipairs(RIVALS) do
 			if C_AddOns.IsAddOnLoaded(rival) then ns.Msg(L["RIVAL_LOADED"], rival) end
@@ -754,7 +754,7 @@ SlashCmdList.ONECLICKFISH = function(msg)
 		ns.ResetSession()
 	elseif msg == "restore" then
 		ns.RestoreAll()
-		ns.Msg(L["Interact and sound settings restored."])
+		ns.Msg(L["RESTORED"])
 	elseif msg == "on" or msg == "off" then
 		ns.SetEnabled(msg == "on")
 	elseif msg == "lure" then

@@ -15,11 +15,20 @@ local CLICK = "CLICK OneClickFishButton:Key"   -- the key's click comes as a mou
 W.addons = { BetterFishing = true }   -- another fishing addon switching the same settings
 local ns = T.boot()
 local L = ns.L
+
+-- a tooltip has this line (SetText is its first, AddLine the rest)
+local function HasLine(tip, text)
+	if tip.__text == text then return true end
+	for _, line in ipairs(tip.__lines or {}) do
+		if line == text then return true end
+	end
+	return false
+end
 local db = OneClickFishDB
 W.addons = nil
 
 -- ---------------------------------------------------------------- login
-check(T.said(L["No key bound. Bind one under Key Bindings > AddOns > OneClickFish, or in /ocfish."]), "no key: a hint")
+check(T.said(L["NO_KEY"]), "no key: a hint")
 eq(db.hinted, true, "the hint is given once")
 check(T.said(L["RIVAL_LOADED"]:format("BetterFishing")), "BetterFishing on as well: a word in chat")
 check(not T.said(L["RIVAL_LOADED"]:format("EasyFishing")), "EasyFishing off: nothing about it")
@@ -272,10 +281,15 @@ eq(tab, "fishing", "opens on the Fishing tab")
 eq(node, "mode", "at its first page")
 check(main.pages.mode:IsShown() and not main.pages.casting:IsShown(), "only that page is shown")
 eq(main.detail.title:GetText(), L["Fishing mode"], "under its title")
-eq(main.detail.desc:GetText(), L["MODE_DESC"], "and its line")
+check(not main.detail.desc:IsShown(), "with no line under it")
+eq(main.pages.mode.__point[2], main.detail.title, "so the page starts under the title")
 main.treeRows[2]:Click()
 eq(select(2, ns.Options.GetSelection()), "casting", "a page on the left")
 check(main.pages.casting:IsShown() and not main.pages.mode:IsShown(), "shows it")
+main.treeRows[3]:Click()
+check(main.detail.desc:IsShown() and main.detail.desc:GetText() == L["SOUND_DESC"], "the sound page: a line for the whole page")
+eq(main.pages.sound.__point[2], main.detail.desc, "and the page under it")
+main.treeRows[2]:Click()
 main.tabs.hud:Click()
 eq(ns.Options.GetSelection(), "hud", "the HUD tab")
 eq(select(2, ns.Options.GetSelection()), "button", "at its first page")
@@ -287,15 +301,18 @@ check(main.priceAddons.TradeSkillMaster:GetText():find(L["STATE_missing"], 1, tr
 main.tabs.fishing:Click()
 eq(main.keyButton:GetText(), "F", "the key is shown")
 
--- the toggles: Off left, On right, the side in force lit; the line under one starts at its label
+-- the toggles: Off left, On right, the side in force lit; more words in a tooltip
 local S = ns.Skin
 eq(main.autoEquip:GetChecked(), true, "equip: on by default")
 eq(main.autoEquip.off:GetText(), L["Off"], "Off at the left")
 eq(main.autoEquip.on:GetText(), L["On"], "On at the right")
 eq(main.autoEquip.on.__textColor[1], S.colors.accent[1], "on: On lit in the accent")
 eq(main.autoEquip.off.__textColor[1], S.colors.dim[1], "and Off dim")
-eq(main.autoEquip.desc:GetText(), L["EQUIP_OFF"], "with what Off does under it")
-eq(main.autoEquip.desc.__point[4], S.ToggleLabelX(), "lined up with the label")
+eq(main.autoEquip.desc, nil, "no line under it")
+main.autoEquip:GetScript("OnEnter")(main.autoEquip)
+eq(GameTooltip:GetText(), L["Equip a fishing pole from your bags"], "hover: titled with its label")
+check(HasLine(GameTooltip, L["EQUIP_TIP"]), "and what it does")
+main.autoEquip:GetScript("OnLeave")(main.autoEquip)
 main.autoEquip:Click()
 eq(db.settings.autoEquip, false, "equip switched off")
 eq(main.autoEquip.off.__textColor[1], S.colors.text[1], "off: Off lit")
@@ -436,8 +453,10 @@ ns.SetLanguage("zhTW")
 eq(main.autoEquip.label:GetText(), ns.locales.zhTW["Equip a fishing pole from your bags"], "labels follow the language")
 eq(main.autoEquip.off:GetText(), "關", "and so do Off")
 eq(main.autoEquip.on:GetText(), "開", "and On")
-eq(main.autoEquip.desc:GetText(), ns.locales.zhTW["EQUIP_OFF"], "and the line under the toggle")
-eq(hud.reset:GetText(), ns.locales.zhTW["Reset"], "so does the HUD")
+main.autoEquip:GetScript("OnEnter")(main.autoEquip)
+check(HasLine(GameTooltip, ns.locales.zhTW["EQUIP_TIP"]), "and the tooltip")
+main.autoEquip:GetScript("OnLeave")(main.autoEquip)
+eq(hud.reset:GetText(), "歸零", "so does the HUD, whose reset is 歸零")
 eq(hud.rows[1].pairs[1].label:GetText(), "Casts", "whose terms stay English")
 ns.SetLanguage(nil)
 eq(main.autoEquip.label:GetText(), L["Equip a fishing pole from your bags"], "and back to the game's")
@@ -495,7 +514,7 @@ hud:GetScript("OnMouseUp")(hud, "RightButton")
 check(main:IsShown(), "right click: the settings")
 main:Hide()
 SlashCmdList.ONECLICKFISH("restore")
-check(T.said(L["Interact and sound settings restored."]), "/ocfish restore")
+check(T.said(L["RESTORED"]), "/ocfish restore")
 fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-7", 131474)
 
 -- ---------------------------------------------------------------- idle: the HUD goes, and comes back
@@ -513,7 +532,15 @@ fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-8", 131474)
 eq(button.__alpha, 1, "the cast button is on screen")
 eq(button.icon:GetTexture(), "pole6256", "wearing the pole")
 button:GetScript("OnEnter")(button)
-check(T.frames.OneClickFishTooltip:IsShown() and T.frames.OneClickFishItemTooltip:IsShown(), "hover: the hints, then the pole")
+local tip = T.frames.OneClickFishTooltip
+check(tip:IsShown() and T.frames.OneClickFishItemTooltip:IsShown(), "hover: the hints, then the pole")
+check(HasLine(tip, L["BUTTON_LEFT"]) and HasLine(tip, L["TIP_RIGHT"]), "a line per click")
+check(not HasLine(tip, L["BUTTON_NO_LURE"]) and not HasLine(tip, L["BUTTON_READY"]), "no colour, no status line")
+check(HasLine(tip, L["TIP_DRAG"]), "unlocked: it can be dragged")
+db.hud.locked = true
+button:GetScript("OnEnter")(button)
+check(not HasLine(tip, L["TIP_DRAG"]), "locked: no word about dragging")
+db.hud.locked = false
 button:GetScript("OnLeave")(button)
 check(not T.frames.OneClickFishItemTooltip:IsShown(), "and gone")
 button:Click("RightButton", true)
@@ -523,6 +550,9 @@ check(not main:IsShown(), "and closed again")
 fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-9", 131474)
 fire("PLAYER_SOFT_INTERACT_CHANGED", nil, "GameObject-0-1-2-3-4")
 check(button.frameArt.__vertex[2] > 0.8, "ready: the frame goes green")
+button:GetScript("OnEnter")(button)
+check(HasLine(T.frames.OneClickFishTooltip, L["BUTTON_READY"]), "and the tooltip says why")
+button:GetScript("OnLeave")(button)
 button:Click("LeftButton", true)
 eq(button.__attributes.macrotext, "/interact", "a mouse click while ready loots")
 fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-9", 131474)
@@ -613,6 +643,9 @@ eq(ns.LureLeft(), 0, "no lure on the pole")
 check(R(4, 1).label:IsShown(), "the lure row")
 check(R(4, 1).value:GetText():find(L["LURE_none"], 1, true), "says none")
 check(button.frameArt.__vertex[1] > 0.9 and button.frameArt.__vertex[2] < 0.7, "the button goes amber")
+button:GetScript("OnEnter")(button)
+check(HasLine(T.frames.OneClickFishTooltip, L["BUTTON_NO_LURE"]), "and the tooltip says why")
+button:GetScript("OnLeave")(button)
 button:Click("LeftButton", true)
 check(button.__attributes.macrotext:find("/cast", 1, true), "without auto apply, the press still casts")
 db.settings.lureAuto = true

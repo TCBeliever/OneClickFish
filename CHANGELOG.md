@@ -66,3 +66,16 @@
 - The HUD's background can be made see-through: *Background opacity* on HUD > Session HUD, 0% (none) to 100% (solid), 80% as before.
 - The line around the HUD can be switched off there too: *Show the HUD border*.
 - The settings window is a little taller (470, was 440), so the Session HUD page fits with the two of them.
+
+## 0.4.2 (2026-11-04)
+
+- The line under the Session HUD page title says only what the HUD does not show: counting starts with the first cast, and after 30 minutes without a cast the next one starts a new session. It no longer lists the numbers the HUD shows beside it, and zhTW writes the 30 as digits.
+
+## 0.4.3 (2026-11-04)
+
+- The settings read like other addons' settings: a switch says what it does in its label, and anything more is in its tooltip. The line under each switch saying what Off does is gone; the ones that told something (the key still casts with the button hidden, the session is still counted with the HUD hidden, /ocfish opens the settings without the minimap button) are tooltips now.
+- Only three pages keep a line under their title, each a rule for the whole page: Sound (applied while the line is out), Lure and hat (pick the ones to use) and Prices (market price with an auction addon, else vendor). The rest of what those lines said moved to the control it concerns: the auto-lure press in its tooltip, the hat in the hat row's tooltip, the 30-minute reset in the Reset session button's tooltip.
+- Labels: *Auto loot* (the game's own name), *Chime on cast*, *List catches*, *Size*, *Background*, *Show border*, *Lock positions*. zhTW: resetting the count is 歸零 everywhere (the HUD's button, the settings, chat).
+- The cast button's tooltip says why it is coloured (green: ready to loot; amber: no lure on the pole), drops the line describing itself, and leaves out "Drag: move" while positions are locked; the HUD's tooltip likewise. The minimap and HUD tooltips have one action per line.
+- Chat: shorter lines for no key set, a key taken from another action, /ocfish restore, and another fishing addon on as well.
+- The settings window is back to 440 tall.
