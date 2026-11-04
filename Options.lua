@@ -12,7 +12,7 @@ local L, Skin = ns.L, ns.Skin
 local O = {}
 ns.Options = O
 
-local W, H      = 600, 440
+local W, H      = 600, 470   -- the Session HUD page, the longest, with room under it
 local TITLE_H   = 28
 local TAB_H     = 24
 local TOP       = TITLE_H + TAB_H - 2   -- title bar and tab strip share a border line each
@@ -305,7 +305,11 @@ local function BuildSession(f)
 
 	f.hudScale = p.Slider("HUD size", ns.HUD.SCALE_MIN, ns.HUD.SCALE_MAX, ns.HUD.SCALE_STEP,
 		function() return hud().scale end, function(v) ns.HUD.SetScale(v) end)
-	f.lock = p.Toggle("Lock the HUD and the cast button", "LOCK_OFF",
+	f.hudAlpha = p.Slider("Background opacity", ns.HUD.ALPHA_MIN, ns.HUD.ALPHA_MAX, ns.HUD.ALPHA_STEP,
+		function() return hud().bgAlpha end, function(v) ns.HUD.SetBackgroundAlpha(v) end)
+	f.hudBorder = p.Toggle("Show the HUD border", "BORDER_OFF",
+		function() return hud().border end, function(v) ns.HUD.SetBorder(v) end)
+	f.lock =p.Toggle("Lock the HUD and the cast button", "LOCK_OFF",
 		function() return hud().locked end, function(v) hud().locked = v end)
 
 	local buttons = CreateFrame("Frame", nil, p)

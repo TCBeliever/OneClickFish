@@ -46,6 +46,7 @@ local PAGE        = 10   -- of them on screen at once
 
 HUD.SCALE_MIN, HUD.SCALE_MAX, HUD.SCALE_STEP = 0.6, 1.8, 0.1
 HUD.IDLE_MIN, HUD.IDLE_MAX = 1, 30   -- minutes without a cast before the box goes
+HUD.ALPHA_MIN, HUD.ALPHA_MAX, HUD.ALPHA_STEP = 0, 1, 0.05   -- how solid the background is
 
 -- the rows, each its pairs; the lure row only with a lure picked
 local ROWS = { { "casts", "catches", "perHour" }, { "value" }, { "gold", "time" }, { "lure" } }
@@ -148,6 +149,29 @@ function HUD.SetScale(scale)
 	ns.db.hud.scale = scale
 	if frame then frame:SetScale(scale) end
 	ns.RefreshOptions()
+end
+
+-- The background as set: how solid it is, and the line around it or none.
+-- The text, the lines inside and the bar are not touched.
+local function PaintBox(f)
+	local s = ns.db.hud
+	local r, g, b = Skin.Color("bg")
+	f:SetBackdropColor(r, g, b, s.bgAlpha)
+	r, g, b = Skin.Color("accent")
+	f:SetBackdropBorderColor(r, g, b, s.border and 1 or 0)
+end
+
+-- alpha: 0 (no background) to 1 (solid), to the step
+function HUD.SetBackgroundAlpha(alpha)
+	alpha = math.max(HUD.ALPHA_MIN, math.min(HUD.ALPHA_MAX, alpha))
+	ns.db.hud.bgAlpha = math.floor(alpha * 20 + 0.5) / 20   -- to the 5% step, 0.35 and not 0.35000000000000003
+	if frame then PaintBox(frame) end
+	ns.RefreshOptions()
+end
+
+function HUD.SetBorder(shown)
+	ns.db.hud.border = shown and true or false
+	if frame then PaintBox(frame) end
 end
 
 function HUD.ResetPosition()
@@ -261,7 +285,8 @@ local function CreateHUD()
 	f:SetClampedToScreen(true)
 	f:SetMovable(true)
 	f:EnableMouse(true)
-	Skin.Backdrop(f, "bg", 0.8, "accent")
+	Skin.Backdrop(f, "bg", 1, "accent")
+	Skin.Paint(f, PaintBox)   -- in place of Backdrop's colours: the opacity and the border as set
 	MakeHandle(f)
 	f:SetScript("OnEnter", ShowTooltip)
 	f:SetScript("OnLeave", GameTooltip_Hide)

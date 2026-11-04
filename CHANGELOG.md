@@ -60,3 +60,9 @@
 - Switches read Off left of the track and On right of it, the side in force lit; the line under a switch says what Off does and lines up with its label. The longer explanations moved from tooltips to the page they belong to.
 - Music, ambience, the cast button's size, the HUD's size and the window's size are sliders, the title above with the value at its right; the minutes before the HUD hides are typed in (1 to 30).
 - zhTW wording shorter and plainer throughout the window; the English smoothed as well.
+
+## 0.4.1 (2026-11-04)
+
+- The HUD's background can be made see-through: *Background opacity* on HUD > Session HUD, 0% (none) to 100% (solid), 80% as before.
+- The line around the HUD can be switched off there too: *Show the HUD border*.
+- The settings window is a little taller (470, was 440), so the Session HUD page fits with the two of them.
