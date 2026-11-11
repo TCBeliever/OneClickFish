@@ -34,6 +34,6 @@ Everything is drawn with the game's own fonts and a flat palette, the same as Co
 
 ## Development
 
-`deploy.bat` copies the addon into the game folder; `/reload` in game. `python tests/run_tests.py` (needs `pip install lupa`) compiles every file, checks the release metadata and locale coverage, and runs a fishing trip against WoW API stubs in both languages. [docs/key-binding.md](docs/key-binding.md) weighs the two ways of wiring the key.
+`deploy.bat` copies the addon into the game folder; `/reload` in game. `python tests/run_tests.py` (needs `pip install lupa`) compiles every file, checks the release metadata and locale coverage, and runs a fishing trip against WoW API stubs in each of the three languages. [docs/key-binding.md](docs/key-binding.md) weighs the two ways of wiring the key.
 
 Parts of the code are adapted from [EasyFishing](https://www.curseforge.com/wow/addons/easyfishing) (MIT); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

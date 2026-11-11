@@ -5,12 +5,13 @@ local ADDON, ns = ...
 -- entry; only symbolic keys do.
 local L = setmetatable({}, { __index = function(t, k) return k end })
 ns.L = L
-ns.locales = { enUS = {}, zhTW = {} }
+ns.locales = { enUS = {}, zhTW = {}, zhCN = {} }
 
 ns.LANGUAGES = {
 	{ code = nil,    key = "LANG_auto" },
 	{ code = "enUS", label = "English" },
 	{ code = "zhTW", label = "繁體中文" },
+	{ code = "zhCN", label = "简体中文" },
 }
 
 -- Fill L for `code`.
@@ -38,7 +39,7 @@ function ns.Bind(widget, key)
 	return widget
 end
 
--- code: "enUS" | "zhTW" | nil (follow the game)
+-- code: "enUS" | "zhTW" | "zhCN" | nil (follow the game)
 function ns.SetLanguage(code)
 	ns.db.settings.locale = code
 	ns.ApplyLocale(code or GetLocale())
@@ -235,6 +236,134 @@ ns.locales.zhTW = {
 	["RIVAL_LOADED"]    = "%s 也在管釣魚設定，兩個一起開，釣完設定可能還原不回來。請停用其中一個。",
 	["Session reset."]  = "統計已歸零。",
 	["Not in combat."]  = "戰鬥中無法變更。",
+}
+
+-- zhCN: the zhTW table in simplified characters, with the mainland client's
+-- words where they differ (设置, 窗口, 商人, 边框, 常规, 禁用, 拖动).
+ns.locales.zhCN = {
+	["LANG_auto"]   = "自动（跟随游戏语言）",
+	["Slash hint"]  = "输入 /ocfish 打开设置。",
+	["KEY_HINT"]    = "按一下抛竿，水花溅起再按一下收竿。",
+	["KEY_TIP"]     = "浮标太远够不到时，按下去会重新抛竿。战斗中无效。",
+
+	-- the cast button, the minimap button and the HUD, on hover
+	["MODE_on"]        = "钓鱼模式开启",
+	["MODE_off"]       = "钓鱼模式关闭",
+	["BUTTON_READY"]   = "可以收竿",
+	["BUTTON_NO_LURE"] = "鱼竿没上饵",
+	["BUTTON_LEFT"]    = "左键：抛竿，水花后收竿",
+	["BUTTON_SHIFT"]   = "Shift + 左键：关闭钓鱼模式",
+	["MINIMAP_LEFT"]   = "左键：开关钓鱼模式",
+	["HUD_WHEEL"]      = "滚轮：翻页",
+	["HUD_CTRL_WHEEL"] = "Ctrl + 滚轮：缩放",
+	["TIP_RIGHT"]      = "右键：设置",
+	["TIP_DRAG"]       = "拖动：移动",
+
+	-- the HUD's terms stay English, as in zhTW; the lure is Chinese
+	["ROW_casts"]       = "Casts",
+	["ROW_catches"]     = "Catches",
+	["ROW_perHour"]     = "Catch/hr",
+	["ROW_value"]       = "Est. value (%s)",
+	["ROW_gold"]        = "Gold/hr",
+	["ROW_time"]        = "Time",
+	["ROW_lure"]        = "鱼饵",
+	["LURE_none"]       = "没有",
+	["None"]            = "无",
+	["SRC_vendor"]      = "商人",
+	["Session"]         = "Session",
+	["Reset"]           = "归零",
+	["STATE_installed"] = "已安装",
+	["STATE_missing"]   = "未安装",
+
+	["Cast & loot"]          = "抛竿与收竿",
+	["Open settings"]        = "打开设置",
+	["No fishing pole equipped."] = "没有装备鱼竿。",
+
+	-- the window
+	["Fishing"]              = "钓鱼",
+	["HUD"]                  = "HUD",
+	["General"]              = "常规",
+	["Fishing mode"]         = "钓鱼模式",
+	["Casting"]              = "抛竿",
+	["Sound"]                = "声音",
+	["Lure and hat"]         = "鱼饵与帽子",
+	["Cast button"]          = "抛竿按钮",
+	["Session HUD"]          = "Session HUD",
+	["Appearance"]           = "外观",
+	["Prices"]               = "价格",
+	["SOUND_DESC"]   = "只在抛竿时生效，收竿就还原。",
+	["GEAR_DESC"]    = "点选要用的鱼饵和钓鱼帽。",
+	["PRICES_DESC"]  = "装了下面任一个就用拍卖行市价，否则用商人收购价。",
+
+	-- fishing mode page
+	["MODE_TIP"]             = "关掉后按键、抛竿按钮和统计都停用。小地图按钮左键也能开关。",
+	["Key"]                  = "按键",
+	["Not bound"]            = "未绑定",
+	["Press a key..."]       = "按下要用的键…",
+	["Clear"]                = "清除",
+
+	-- casting page
+	["Equip a fishing pole from your bags"] = "自动装上鱼竿",
+	["EQUIP_TIP"]                           = "抛竿时手上没有鱼竿，就从背包装上。",
+	["Auto loot"]                           = "自动拾取",
+	["LOOT_TIP"]                            = "钓到的东西直接进背包，只管钓鱼。",
+	["Chime on cast"]                       = "抛竿提示音",
+	["CHIME_TIP"]                           = "浮标落水时响一声。",
+
+	-- sound page
+	["Lower music and ambience"]     = "压低音乐与环境音",
+	["Music"]                        = "音乐",
+	["Ambience"]                     = "环境音",
+	["Louder sound effects"]         = "音效开到最大",
+	["Keep sound in the background"] = "切到后台仍有声音",
+	["BG_TIP"]                       = "切到其他窗口时照样听得到水花声。",
+
+	-- lure and hat page
+	["Lure"]                 = "鱼饵",
+	["Apply before casting"] = "抛竿前自动上饵",
+	["LURE_AUTO_TIP"]        = "鱼竿没饵时，第一下上饵，第二下才抛竿。已经有饵就不换。",
+	["Fishing hat"]          = "钓鱼帽",
+	["HAT_TIP"]              = "抛竿前戴上，关掉钓鱼模式时换回原本的头部装备。",
+
+	-- cast button page
+	["Show the cast button"]    = "显示抛竿按钮",
+	["BUTTON_TIP"]              = "隐藏后按键照样能抛竿。",
+	["Button size"]             = "按钮大小",
+	["Show the minimap button"] = "显示小地图按钮",
+	["MINIMAP_TIP"]             = "隐藏后用 /ocfish 打开设置。",
+
+	-- session HUD page
+	["Show the HUD"]            = "显示 HUD",
+	["HUD_TIP"]                 = "隐藏后照样统计。",
+	["List catches"]            = "列出渔获",
+	["Hide after"]              = "闲置后收起",
+	["minutes"]                 = "分钟",
+	["IDLE_TIP"]                = "下次抛竿再出现。",
+	["Size"]                    = "大小",
+	["Background"]              = "背景",
+	["Show border"]             = "显示边框",
+	["Lock positions"]          = "锁定位置",
+	["LOCK_TIP"]                = "HUD 和抛竿按钮都不能拖动。",
+	["Reset positions"]         = "重置位置",
+	["Reset session"]           = "统计归零",
+	["RESET_TIP"]               = "30 分钟没抛竿，下一竿也会自动归零。",
+
+	-- appearance page
+	["Language"]             = "语言",
+	["Theme"]                = "主题",
+	["THEME_tide"]           = "潮汐（蓝）",
+	["THEME_obsidian"]       = "曜墨金（黑金）",
+	["Off"]                  = "关",
+	["On"]                   = "开",
+	["Window scale"]         = "窗口大小",
+
+	-- chat
+	["NO_KEY"]          = "还没设置按键，输入 /ocfish 设置。",
+	["KEY_TAKEN"]       = "%s 原本是“%s”，已改成抛竿与收竿。",
+	["RESTORED"]        = "钓鱼时改过的游戏设置已还原。",
+	["RIVAL_LOADED"]    = "%s 也在改钓鱼设置，两个一起开，钓完设置可能还原不回来。请禁用其中一个。",
+	["Session reset."]  = "统计已归零。",
+	["Not in combat."]  = "战斗中无法更改。",
 }
 
 ns.ApplyLocale(GetLocale())

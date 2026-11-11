@@ -90,3 +90,8 @@
 - *Apply before casting* is greyed out while no lure is picked (the X), since it has nothing to put on then. It keeps its setting.
 - Each lure shows how many are in the bags, in the corner as the bags do.
 - The lure picked stays in the row when the last one is used, grey with a red 0, so the page still shows which one is set. Before, it dropped off the row and nothing looked picked, though the setting still pointed at it and the cast button turned amber. A hat picked but no longer with you stays the same way, grey.
+
+## 0.4.6 (2026-11-11)
+
+- Simplified Chinese (简体中文): the whole addon, picked under General > Appearance > Language or followed from a zhCN game. The mainland client's words where they differ from zhTW (设置, 窗口, 商人, 边框); the HUD's numbers keep their English names as in zhTW.
+- Also in this upload, the versions not uploaded on their own since 0.4.0: the HUD's background opacity and a switch for its border (0.4.1); settings worded like other addons', a label for what a switch does and anything more in its tooltip (0.4.2, 0.4.3); lure and hat icons framed as the game frames icons, the picked one ringed in the accent colour (0.4.4); lure counts in the corner, the picked lure kept in the row grey with a red 0 when used up, and *Apply before casting* greyed while no lure is picked (0.4.5).

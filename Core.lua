@@ -89,7 +89,7 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 --
 --   settings = { enabled=, autoEquip=, fastLoot=, chime=, duck=, musicVol=, ambienceVol=, boostSFX=, bgSound=,
 --                showButton=, minimap=, lure= (itemID), lureAuto=, hat= (itemID),
---                locale= ("enUS" | "zhTW"; absent = follow the game),
+--                locale= ("enUS" | "zhTW" | "zhCN"; absent = follow the game),
 --                theme= (a key of Skin.THEMES), windowScale= (the settings window) },
 --   headBefore = what was on the head before the hat, while the hat is on
 --   hud      = { show = "always" | "never", catches=, idle= (minutes without a cast before it goes),

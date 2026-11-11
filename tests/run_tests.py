@@ -2,7 +2,7 @@
 
 1. every Lua file listed in the .toc compiles (Lua 5.1)
 2. release metadata, locale coverage, line endings, no Blizzard frame skin
-3. behaviour tests against WoW API stubs, in both languages
+3. behaviour tests against WoW API stubs, in every language
 """
 import re
 import sys
@@ -64,8 +64,9 @@ for f in list(ROOT.glob("*.*")) + list((ROOT / "docs").glob("*.md")) + list((ROO
     if f.suffix in (".lua", ".toc", ".md", ".xml", ".py") and b"\r\n" in f.read_bytes():
         fail(f"CRLF in {f.relative_to(ROOT)}")
 
-# 2c. locale coverage: every key the code uses has a zhTW entry; symbolic keys also need English
-en_keys, zh_keys, used, prefixes = set(), set(), set(), set()
+# 2c. locale coverage: every key the code uses has a zhTW entry; symbolic keys also need English;
+# zhCN has exactly the keys zhTW has
+en_keys, zh_keys, cn_keys, used, prefixes = set(), set(), set(), set(), set()
 code_files = []
 for f in files:
     src = f.read_text(encoding="utf-8")
@@ -80,7 +81,7 @@ for f in files:
             else:
                 k = re.match(r'\s*\["([^"]+)"\]\s*=', line)
                 if k and current:
-                    (en_keys if current == "enUS" else zh_keys).add(k.group(1))
+                    {"enUS": en_keys, "zhTW": zh_keys, "zhCN": cn_keys}[current].add(k.group(1))
         used |= set(re.findall(r'\bkey = "([A-Za-z_]+)"', src))
         used |= set(re.findall(r'L\["([^"]+)"\]', src))   # the binding names
     else:
@@ -108,6 +109,10 @@ for k in sorted(used):
         fail(f"no zhTW for: {k}")
     if re.match(r"[A-Z]+_", k) and k not in en_keys:
         fail(f"symbolic key without English: {k}")
+for k in sorted(zh_keys - cn_keys):
+    fail(f"no zhCN for: {k}")
+for k in sorted(cn_keys - zh_keys):
+    fail(f"zhCN entry zhTW does not have: {k}")
 for k in sorted((zh_keys | en_keys) - used):
     if not any(k.startswith(pre) for pre in prefixes):
         fail(f"locale entry never used: {k}")
@@ -121,8 +126,8 @@ for f, src in code_files:
         if b in src:
             fail(f"Blizzard skin asset in {f.relative_to(ROOT)}: {b}")
 
-# 3. behaviour, in both languages
-for loc in ("enUS", "zhTW"):
+# 3. behaviour, in every language
+for loc in ("enUS", "zhTW", "zhCN"):
     for test in TESTS:
         lua = LuaRuntime(unpack_returned_tuples=True)
         g = lua.globals()
