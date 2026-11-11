@@ -714,8 +714,53 @@ main.hat.buttons[3]:Click()
 eq(db.settings.hat, 33820, "a click picks")
 main.hat.buttons[1]:Click()
 eq(db.settings.hat, nil, "the X picks none")
-main.lure.buttons[2]:GetScript("OnEnter")(main.lure.buttons[2])
+local worm, nat = main.lure.buttons[2], main.lure.buttons[3]
+worm:GetScript("OnEnter")(worm)
 check(GameTooltip:IsShown(), "hover: the item")
+worm:GetScript("OnLeave")(worm)
+check(worm.ring:IsShown() and not nat.ring:IsShown() and not main.lure.buttons[1].ring:IsShown(),
+	"a ring round the one picked only")
+eq(worm.ring.__color[3], select(3, S.Color("accent")), "in the accent")
+nat:GetScript("OnEnter")(nat)
+check(nat.ring:IsShown(), "the mouse rings another")
+eq(nat.ring.__color[3], select(3, S.Color("border")), "in the border colour, so the picked one still stands out")
+nat:GetScript("OnLeave")(nat)
+check(not nat.ring:IsShown(), "and the ring goes with the mouse")
+ns.SetTheme("obsidian")
+eq(worm.ring.__color[3], select(3, S.Color("accent")), "a theme switch repaints the ring")
+check(not nat.ring:IsShown(), "and shows none that was hidden")
+ns.SetTheme("tide")
+
+-- how many lures are left, and the one picked when there is none
+eq(worm.count:GetText(), "1", "the lure tray: how many are in the bags")
+eq(main.lure.buttons[1].count:GetText(), "", "nothing on the X")
+eq(main.hat.buttons[2].count:GetText(), "", "the hat tray: no counts")
+check(not main.lureAuto.disabled, "a lure picked: the auto lure switch can be used")
+W.bags = { [0] = { 33820 } }   -- the last worm used
+ns.Options.Refresh()
+eq(worm.id, 262650, "the worm, used up, stays in the tray")
+check(worm.selected, "still the one picked")
+check(worm.icon.__desaturated, "grey")
+eq(worm.count:GetText(), "0", "with 0")
+eq(worm.count.__textColor[1], (S.Color("bad")), "in red")
+check(not nat.icon.__desaturated, "the ones held are not grey")
+eq(nat.count.__textColor[1], 1, "nor is their count red")
+db.settings.lure = nil
+ns.Options.Refresh()
+eq(main.lure.buttons[2].id, 33820, "picked no more and gone: off the tray")
+check(not main.lure.buttons[3]:IsShown(), "one slot fewer")
+check(main.lureAuto.disabled, "no lure picked: the auto lure switch greyed")
+eq(main.lureAuto.__alpha, 0.55, "and faded")
+db.settings.lureAuto = false
+main.lureAuto:Click()
+eq(db.settings.lureAuto, false, "a click on it does nothing")
+W.items[19972] = { price = 1 }   -- Lucky Fishing Hat: picked, then left in the bank
+db.settings.hat = 19972
+ns.Options.Refresh()
+eq(main.hat.buttons[4].id, 19972, "a hat picked but gone stays in its tray")
+check(main.hat.buttons[4].selected and main.hat.buttons[4].icon.__desaturated, "picked, and grey")
+eq(main.hat.buttons[4].count:GetText(), "", "with no count")
+W.bags = { [0] = { 262650, 33820 } }
 db.settings.lure, db.settings.hat = nil, nil
 main:Hide()
 

@@ -79,3 +79,14 @@
 - The cast button's tooltip says why it is coloured (green: ready to loot; amber: no lure on the pole), drops the line describing itself, and leaves out "Drag: move" while positions are locked; the HUD's tooltip likewise. The minimap and HUD tooltips have one action per line.
 - Chat: shorter lines for no key set, a key taken from another action, /ocfish restore, and another fishing addon on as well.
 - The settings window is back to 440 tall.
+
+## 0.4.4 (2026-11-04)
+
+- The lure and hat icons on the settings page are framed the way the game frames icons, as CombatKit's are: a thin black line round each, with a faint light line just inside, so an icon with a dark ground keeps its edge on the dark page. They no longer sit in a coloured box.
+- The one picked has a ring in the accent colour; the one under the mouse has a dimmer ring, so the picked one still stands out. The X (none) is an empty black slot.
+
+## 0.4.5 (2026-11-04)
+
+- *Apply before casting* is greyed out while no lure is picked (the X), since it has nothing to put on then. It keeps its setting.
+- Each lure shows how many are in the bags, in the corner as the bags do.
+- The lure picked stays in the row when the last one is used, grey with a red 0, so the page still shows which one is set. Before, it dropped off the row and nothing looked picked, though the setting still pointed at it and the cast button turned amber. A hat picked but no longer with you stays the same way, grey.

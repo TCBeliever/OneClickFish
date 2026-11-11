@@ -301,9 +301,11 @@ function ns.LureNeeded()
 	return lureApplied == nil or GetTime() - lureApplied >= LURE_SETTLE
 end
 
--- The known items the player has, in the list's order: { { id=, name=, icon= }, ... }.
--- extra: an item ID to count as held as well (what is worn).
-local function Held(rank, extra)
+-- The known items the player has, in the list's order:
+-- { { id=, name=, icon=, count=, held= }, ... }. worn: an item ID to count as
+-- held as well (what is on the head). picked: the one in the settings, listed
+-- even with none of it left (held = false), so the settings still show it.
+local function Held(rank, worn, picked)
 	local have = {}
 	for bag = 0, NUM_BAG_SLOTS do
 		for slot = 1, C_Container.GetContainerNumSlots(bag) do
@@ -311,19 +313,21 @@ local function Held(rank, extra)
 			if id and rank[id] then have[id] = true end
 		end
 	end
-	if extra and rank[extra] then have[extra] = true end
+	if worn and rank[worn] then have[worn] = true end
+	if picked and rank[picked] and not have[picked] then have[picked] = false end
 	local list = {}
-	for id in pairs(have) do
+	for id, held in pairs(have) do
 		local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(id)
-		list[#list + 1] = { id = id, name = name or tostring(id), icon = icon or C_Item.GetItemIconByID(id) }
+		list[#list + 1] = { id = id, name = name or tostring(id), icon = icon or C_Item.GetItemIconByID(id),
+			count = held and C_Item.GetItemCount(id) or 0, held = held }
 	end
 	table.sort(list, function(a, b) return rank[a.id] < rank[b.id] end)
 	return list
 end
 
--- The lures in the bags. The lure is picked from these.
+-- The lures in the bags, and the one picked. The lure is picked from these.
 function ns.LureCandidates()
-	return Held(LURE_RANK)
+	return Held(LURE_RANK, nil, db.settings.lure)
 end
 
 -- ---------------------------------------------------------------------------
@@ -332,9 +336,10 @@ end
 
 local HEAD = INVSLOT_HEAD or 1
 
--- The fishing hats in the bags, or on the head. The hat is picked from these.
+-- The fishing hats in the bags or on the head, and the one picked. The hat is
+-- picked from these.
 function ns.HatCandidates()
-	return Held(HAT_RANK, GetInventoryItemID("player", HEAD))
+	return Held(HAT_RANK, GetInventoryItemID("player", HEAD), db.settings.hat)
 end
 
 -- Out of combat, before a cast: the hat, if it is not on already.

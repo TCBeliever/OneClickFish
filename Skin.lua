@@ -288,10 +288,20 @@ function Skin.Toggle(parent, text, onChange)
 	end
 	function c:GetChecked() return self.checked or false end
 	Skin.Paint(c, function(self) self:SetChecked(self.checked) end)
+	-- greyed while it has nothing to act on; it keeps its value, and its tooltip
+	function c:SetDisabled(disabled)
+		self.disabled = disabled and true or false
+		self:SetAlpha(self.disabled and 0.55 or 1)
+	end
 
-	c:SetScript("OnEnter", function(self) self.hovered = true; self.box:SetColorTexture(Skin.Color("accent")) end)
+	c:SetScript("OnEnter", function(self)
+		if self.disabled then return end
+		self.hovered = true
+		self.box:SetColorTexture(Skin.Color("accent"))
+	end)
 	c:SetScript("OnLeave", function(self) self.hovered = nil; self.box:SetColorTexture(Skin.Color("border")) end)
 	c:SetScript("OnClick", function(self)
+		if self.disabled then return end
 		self:SetChecked(not self.checked)
 		onChange(self.checked)
 	end)
@@ -343,33 +353,68 @@ function Skin.Row(parent)
 end
 
 -- A row of item icons to pick one from; the first slot, an X, stands for none.
--- Hovering a slot shows the item. tray:SetItems({ { id=, icon= }, ... }, selectedID);
--- onPick(id), nil for none.
+-- Hovering a slot shows the item. tray:SetItems({ { id=, icon=, count=, held= }, ... },
+-- selectedID); onPick(id), nil for none. counts: show how many of each, in the
+-- corner as the bags do. An item with held = false (the one picked, used up or
+-- gone) is grey, its count 0 in red.
+-- Each slot is framed the way the game frames its icons, as CombatKit frames
+-- its own (Skin.FramedIcon there): a 1px black line round the icon and a faint
+-- light line just inside, so a dark-edged icon keeps its outline on a dark
+-- page. A ring outside that marks the one picked (accent) and the one under
+-- the mouse (border). The X is an empty slot: black, the same lines.
 local TRAY_SIZE, TRAY_GAP = 28, 4
-function Skin.IconTray(parent, onPick)
+local function PaintSlot(b)
+	b.ring:SetColorTexture(Skin.Color(b.selected and "accent" or "border"))
+	b.ring:SetShown(b.selected or b.hover or false)
+	if b.held == false then b.count:SetTextColor(Skin.Color("bad")) else b.count:SetTextColor(1, 1, 1) end
+end
+function Skin.IconTray(parent, onPick, counts)
 	local tray = CreateFrame("Frame", nil, parent)
 	tray.buttons = {}
 	local function Slot(i)
-		local b = CreateFrame("Button", nil, tray, "BackdropTemplate")
+		local b = CreateFrame("Button", nil, tray)
 		b:SetSize(TRAY_SIZE, TRAY_SIZE)
 		b:SetPoint("LEFT", (i - 1) * (TRAY_SIZE + TRAY_GAP), 0)
-		Skin.Backdrop(b, "element")
+		b.ring = b:CreateTexture(nil, "BACKGROUND")   -- the 1px left showing round the black
+		b.ring:SetAllPoints()
+		local black = b:CreateTexture(nil, "BORDER")
+		black:SetColorTexture(0, 0, 0, 1)
+		black:SetPoint("TOPLEFT", 1, -1)
+		black:SetPoint("BOTTOMRIGHT", -1, 1)
 		b.icon = b:CreateTexture(nil, "ARTWORK")
 		b.icon:SetPoint("TOPLEFT", 2, -2)
 		b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
 		b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		-- the light line: one edge of the icon each, from one corner to the next
+		for _, edge in ipairs({ { "TOPLEFT", "TOPRIGHT", "h" }, { "BOTTOMLEFT", "BOTTOMRIGHT", "h" },
+			{ "TOPLEFT", "BOTTOMLEFT", "v" }, { "TOPRIGHT", "BOTTOMRIGHT", "v" } }) do
+			local t = b:CreateTexture(nil, "OVERLAY")
+			t:SetColorTexture(1, 1, 1, 0.16)
+			t:SetPoint(edge[1], b.icon, edge[1])
+			t:SetPoint(edge[2], b.icon, edge[2])
+			if edge[3] == "h" then t:SetHeight(1) else t:SetWidth(1) end
+		end
 		b.bars = Bars(b, 12, "dim", math.pi / 4, 0, -math.pi / 4, 0)
+		b.count = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+		b.count:SetPoint("BOTTOMRIGHT", b.icon, "BOTTOMRIGHT", 0, 1)
+		b.count:SetJustifyH("RIGHT")
 		function b:SetSelected(on)
 			self.selected = on and true or false
-			Rest(self)
+			PaintSlot(self)
 		end
+		Skin.Paint(b, PaintSlot)
 		b:SetScript("OnEnter", function(self)
+			self.hover = true
+			PaintSlot(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			if self.id then GameTooltip:SetItemByID(self.id) else GameTooltip:SetText(ns.L["None"]) end
 			GameTooltip:Show()
 		end)
-		b:SetScript("OnLeave", GameTooltip_Hide)
-		Hoverable(b)   -- after the scripts: it hooks them
+		b:SetScript("OnLeave", function(self)
+			self.hover = false
+			PaintSlot(self)
+			GameTooltip_Hide()
+		end)
 		b:SetScript("OnClick", function(self) onPick(self.id) end)
 		return b
 	end
@@ -383,10 +428,13 @@ function Skin.IconTray(parent, onPick)
 			end
 			local item = items[i - 1]
 			b.id = item and item.id or nil
+			b.held = item and item.held
 			b.icon:SetTexture(item and item.icon or nil)
 			b.icon:SetShown(item ~= nil)
+			b.icon:SetDesaturated(b.held == false)
 			for _, t in ipairs(b.bars) do t:SetShown(item == nil) end
-			b:SetSelected(b.id == selected)
+			b.count:SetText(item and counts and tostring(item.count or 0) or "")
+			b:SetSelected(b.id == selected)   -- paints the ring and the count's colour
 			b:Show()
 		end
 		for i = n + 1, #self.buttons do self.buttons[i]:Hide() end

@@ -259,7 +259,7 @@ local function BuildGear(f)
 	local p = NewPage(f, "gear")
 	local S = function() return ns.db.settings end
 	local row = p.Row("Lure", 28)
-	f.lure = Skin.IconTray(row, function(id) S().lure = id; ns.Changed() end)
+	f.lure = Skin.IconTray(row, function(id) S().lure = id; ns.Changed() end, true)   -- with how many are left
 	f.lure:SetPoint("TOPLEFT", FIELD_X, 0)
 	f.lureAuto = p.Toggle("Apply before casting", "LURE_AUTO_TIP",
 		function() return S().lureAuto end, function(v) S().lureAuto = v end)
@@ -488,6 +488,7 @@ function O.Refresh()
 		b:SetLabel(key and GetBindingText(key) or L["Not bound"])
 	end
 	main.lure:SetItems(ns.LureCandidates(), ns.db.settings.lure)
+	main.lureAuto:SetDisabled(ns.db.settings.lure == nil)   -- no lure picked: nothing to put on
 	main.hat:SetItems(ns.HatCandidates(), ns.db.settings.hat)
 	local code = ns.db.settings.locale
 	for _, entry in ipairs(ns.LANGUAGES) do

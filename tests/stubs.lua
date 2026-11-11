@@ -264,6 +264,7 @@ local function Mock(kind, name)
 		SetAttribute = function(self, k, v) self.__attributes = self.__attributes or {}; self.__attributes[k] = v end,
 		GetAttribute = function(self, k) return self.__attributes and self.__attributes[k] end,
 		SetTexture = function(self, t) self.__texture = t end,
+		SetDesaturated = function(self, v) self.__desaturated = v end,
 		GetTexture = function(self) return self.__texture end,
 		SetVertexColor = function(self, r, g, b) self.__vertex = { r, g, b } end,
 		CreateMaskTexture = function() return Mock("MaskTexture") end,
