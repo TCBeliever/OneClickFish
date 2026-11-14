@@ -13,7 +13,7 @@ function T.eq(a, b, name)
 end
 
 local W = {
-	combat = false, now = 0, epoch = 1000,
+	combat = false, now = 0, epoch = 1000, zone = "Dornogal",
 	cvars = {
 		SoftTargetInteract = "1", SoftTargetInteractArc = "0", SoftTargetInteractRange = "15",
 		SoftTargetInteractRangeIsHard = "1", SoftTargetInteractGameObject = "0", SoftTargetIconGameObject = "0",
@@ -40,6 +40,7 @@ function T.logged(s)
 end
 
 function GetLocale() return LOCALE or "enUS" end
+function GetRealZoneText() return W.zone end
 function strtrim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 function wipe(t) for k in pairs(t) do t[k] = nil end return t end
 tinsert = table.insert

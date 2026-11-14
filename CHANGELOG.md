@@ -95,3 +95,9 @@
 
 - Simplified Chinese (简体中文): the whole addon, picked under General > Appearance > Language or followed from a zhCN game. The mainland client's words where they differ from zhTW (设置, 窗口, 商人, 边框); the HUD's numbers keep their English names as in zhTW.
 - Also in this upload, the versions not uploaded on their own since 0.4.0: the HUD's background opacity and a switch for its border (0.4.1); settings worded like other addons', a label for what a switch does and anything more in its tooltip (0.4.2, 0.4.3); lure and hat icons framed as the game frames icons, the picked one ringed in the accent colour (0.4.4); lure counts in the corner, the picked lure kept in the row grey with a red 0 when used up, and *Apply before casting* greyed while no lure is picked (0.4.5).
+
+## 0.4.7 (2026-11-12)
+
+- Session HUD page: *Reset after* sets how many minutes without a cast start a new session (30 by default, 2 to 120).
+- A session also ends when you change zones (as soon as the zone changes, not at the next cast) and when you log out or switch characters. A /reload keeps it. A loading screen that has not told the zone yet does not count as a change.
+- Copy: shorter tooltips. *Reset after* says a zone change or a logout resets too, and the Reset session button has no tooltip any more. *Chime on cast* says it plays when the bobber lands, not when a fish bites. *Auto loot*: fishing only. The key's tooltip no longer says it does nothing in combat (it keeps doing what it did last). *Keep sound in the background* has no tooltip (it said what the label says). The page holding the cast button and the minimap button is *Buttons* (按鈕). zhTW says 商人 for the vendor, as the game does. enUS: *Equip a pole automatically*; chat says "Can't change that in combat."

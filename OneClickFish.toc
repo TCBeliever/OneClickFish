@@ -4,7 +4,7 @@
 ## Notes-zhTW: 一個鍵拋竿和收竿，HUD 統計漁獲與每小時收益。
 ## Notes-zhCN: 一个键抛竿和收竿，HUD 统计渔获与每小时收益。
 ## Author: Venser
-## Version: 0.4.6
+## Version: 0.4.7
 ## SavedVariables: OneClickFishDB
 ## IconTexture: Interface\Icons\Trade_Fishing
 ## Category: venMOD

@@ -5,7 +5,7 @@ local L, Skin = ns.L, ns.Skin
 -- The settings window, laid out like SmartVoidcore's: a title bar, a tab
 -- strip, the pages of the tab on the left, the page on the right with its
 -- title and a line of explanation. Three tabs: Fishing (the mode and the key,
--- casting, sound, lure and hat), HUD (the cast button, the session HUD),
+-- casting, sound, lure and hat), HUD (the cast button and the minimap button, the session HUD),
 -- General (appearance, prices).
 -- ===========================================================================
 
@@ -36,7 +36,7 @@ local TABS = {
 		{ key = "gear",    label = "Lure and hat", desc = "GEAR_DESC" },
 	} },
 	{ key = "hud", label = "HUD", nodes = {
-		{ key = "button",  label = "Cast button" },
+		{ key = "button",  label = "Buttons" },
 		{ key = "session", label = "Session HUD" },
 	} },
 	{ key = "general", label = "General", nodes = {
@@ -227,7 +227,7 @@ end
 local function BuildCasting(f)
 	local p = NewPage(f, "casting")
 	local S = function() return ns.db.settings end
-	f.autoEquip = p.Toggle("Equip a fishing pole from your bags", "EQUIP_TIP",
+	f.autoEquip = p.Toggle("Equip a pole automatically", "EQUIP_TIP",
 		function() return S().autoEquip end, function(v) S().autoEquip = v end)
 	f.fastLoot = p.Toggle("Auto loot", "LOOT_TIP",
 		function() return S().fastLoot end, function(v) S().fastLoot = v end)
@@ -250,7 +250,7 @@ local function BuildSound(f)
 	end)
 	f.boostSFX = p.Toggle("Louder sound effects", nil,
 		function() return S().boostSFX end, function(v) S().boostSFX = v end)
-	f.bgSound = p.Toggle("Keep sound in the background", "BG_TIP",
+	f.bgSound = p.Toggle("Keep sound in the background", nil,
 		function() return S().bgSound end, function(v) S().bgSound = v end)
 end
 
@@ -304,6 +304,20 @@ local function BuildSession(f)
 	local unit = ns.Bind(Skin.Label(row, "", nil, "dim"), "minutes")
 	unit:SetPoint("LEFT", f.idle, "RIGHT", 6, 0)
 
+	row = p.Row("Reset after")
+	f.resetAfter = Skin.EditBox(row, EDIT_W, function(text)
+		local v = tonumber(text)
+		if v then hud().resetAfter = math.max(ns.RESET_MIN, math.min(ns.RESET_MAX, math.floor(v))) end
+		ns.Changed()
+	end)
+	f.resetAfter:SetNumeric(true)
+	f.resetAfter:SetMaxLetters(3)
+	f.resetAfter:SetJustifyH("CENTER")
+	f.resetAfter:SetPoint("TOPLEFT", FIELD_X, 0)
+	Skin.Tooltip(f.resetAfter, "Reset after", "RESET_AFTER_TIP")
+	unit = ns.Bind(Skin.Label(row, "", nil, "dim"), "minutes")
+	unit:SetPoint("LEFT", f.resetAfter, "RIGHT", 6, 0)
+
 	f.hudScale = p.Slider("Size", ns.HUD.SCALE_MIN, ns.HUD.SCALE_MAX, ns.HUD.SCALE_STEP,
 		function() return hud().scale end, function(v) ns.HUD.SetScale(v) end)
 	f.hudAlpha = p.Slider("Background", ns.HUD.ALPHA_MIN, ns.HUD.ALPHA_MAX, ns.HUD.ALPHA_STEP,
@@ -323,7 +337,6 @@ local function BuildSession(f)
 	f.resetPositions:SetPoint("TOPLEFT")
 	f.resetSession = ns.Bind(Skin.Button(buttons, "", 100, 22, function() ns.ResetSession() end), "Reset session")
 	f.resetSession:SetPoint("LEFT", f.resetPositions, "RIGHT", 8, 0)
-	Skin.Tooltip(f.resetSession, "Reset session", "RESET_TIP")
 end
 
 local function ThemeItems()
@@ -478,6 +491,7 @@ function O.Refresh()
 	for _, c in ipairs(main.checks) do c:SetChecked(c.get()) end
 	for _, s in ipairs(main.sliders) do s:SetValue(s.get()) end
 	if not main.idle:HasFocus() then main.idle:SetText(tostring(ns.db.hud.idle)) end
+	if not main.resetAfter:HasFocus() then main.resetAfter:SetText(tostring(ns.db.hud.resetAfter)) end
 	local b = main.keyButton
 	if b.listening then
 		b.label:SetTextColor(Skin.Color("accent"))

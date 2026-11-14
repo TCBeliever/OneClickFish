@@ -247,7 +247,42 @@ fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-5", 131474)
 eq(db.session.casts, 1, "a new session")
 eq(db.session.catches, 0, "from nothing")
 eq(db.session.start, W.epoch, "starting now")
+eq(db.session.zone, "Dornogal", "where it began")
 fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-5", 131474)
+
+-- the pause is a setting
+db.hud.resetAfter = 60
+W.epoch = W.epoch + 45 * 60
+fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-5b", 131474)
+fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-5b", 131474)
+eq(db.session.casts, 2, "45 minutes is not a long pause with 60 set")
+db.hud.resetAfter = 30
+
+-- a zone change ends it at once; a loading screen that has not told the zone yet does not
+W.zone = ""
+fire("ZONE_CHANGED_NEW_AREA")
+eq(db.session.casts, 2, "no zone yet: kept")
+W.zone = "Dornogal"
+fire("ZONE_CHANGED_NEW_AREA")
+eq(db.session.casts, 2, "the same zone: kept")
+W.zone = "Isle of Dorn"
+fire("ZONE_CHANGED_NEW_AREA")
+eq(db.session.casts, 0, "another zone: a new session")
+eq(db.session.zone, nil, "with no zone until its first cast")
+fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-5c", 131474)
+fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-5c", 131474)
+eq(db.session.zone, "Isle of Dorn", "which tells it")
+
+-- a /reload keeps it, a login (after a logout, or another character) does not
+fire("PLAYER_ENTERING_WORLD", false, true)
+eq(db.session.casts, 1, "a /reload keeps the session")
+W.zone = "Dornogal"
+fire("PLAYER_ENTERING_WORLD", false, false)
+eq(db.session.casts, 0, "a loading screen into another zone ends it")
+fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-5d", 131474)
+fire("UNIT_SPELLCAST_CHANNEL_STOP", "player", "cast-5d", 131474)
+fire("PLAYER_ENTERING_WORLD", true, false)
+eq(db.session.casts, 0, "a login starts over")
 
 -- ---------------------------------------------------------------- combat
 fire("UNIT_SPELLCAST_CHANNEL_START", "player", "cast-6", 131474)
@@ -310,7 +345,7 @@ eq(main.autoEquip.on.__textColor[1], S.colors.accent[1], "on: On lit in the acce
 eq(main.autoEquip.off.__textColor[1], S.colors.dim[1], "and Off dim")
 eq(main.autoEquip.desc, nil, "no line under it")
 main.autoEquip:GetScript("OnEnter")(main.autoEquip)
-eq(GameTooltip:GetText(), L["Equip a fishing pole from your bags"], "hover: titled with its label")
+eq(GameTooltip:GetText(), L["Equip a pole automatically"], "hover: titled with its label")
 check(HasLine(GameTooltip, L["EQUIP_TIP"]), "and what it does")
 main.autoEquip:GetScript("OnLeave")(main.autoEquip)
 main.autoEquip:Click()
@@ -388,6 +423,21 @@ eq(db.hud.idle, 1, "no less than 1")
 main.idle:SetText("5")
 main.idle:GetScript("OnEditFocusLost")(main.idle)
 
+-- the minutes before a new session: typed in, kept between 2 and 120
+eq(main.resetAfter:GetText(), "30", "reset minutes shown")
+main.resetAfter:SetText("90")
+main.resetAfter:GetScript("OnEditFocusLost")(main.resetAfter)
+eq(db.hud.resetAfter, 90, "reset minutes typed")
+main.resetAfter:SetText("1")
+main.resetAfter:GetScript("OnEditFocusLost")(main.resetAfter)
+eq(db.hud.resetAfter, 2, "no less than 2")
+eq(main.resetAfter:GetText(), "2", "and shown as such")
+main.resetAfter:SetText("999")
+main.resetAfter:GetScript("OnEditFocusLost")(main.resetAfter)
+eq(db.hud.resetAfter, 120, "no more than 120")
+main.resetAfter:SetText("30")
+main.resetAfter:GetScript("OnEditFocusLost")(main.resetAfter)
+
 -- the themes: tide and obsidian; a key not known reads as the first
 eq(S.THEMES[1].key, "tide", "Tide first")
 eq(S.THEMES[2].key, "obsidian", "then Obsidian")
@@ -450,7 +500,7 @@ check(T.said("H"), "is announced")
 
 -- language
 ns.SetLanguage("zhTW")
-eq(main.autoEquip.label:GetText(), ns.locales.zhTW["Equip a fishing pole from your bags"], "labels follow the language")
+eq(main.autoEquip.label:GetText(), ns.locales.zhTW["Equip a pole automatically"], "labels follow the language")
 eq(main.autoEquip.off:GetText(), "關", "and so do Off")
 eq(main.autoEquip.on:GetText(), "開", "and On")
 main.autoEquip:GetScript("OnEnter")(main.autoEquip)
@@ -459,7 +509,7 @@ main.autoEquip:GetScript("OnLeave")(main.autoEquip)
 eq(hud.reset:GetText(), "歸零", "so does the HUD, whose reset is 歸零")
 eq(hud.rows[1].pairs[1].label:GetText(), "Casts", "whose terms stay English")
 ns.SetLanguage(nil)
-eq(main.autoEquip.label:GetText(), L["Equip a fishing pole from your bags"], "and back to the game's")
+eq(main.autoEquip.label:GetText(), L["Equip a pole automatically"], "and back to the game's")
 
 main:Hide()
 check(not hud:IsShown(), "with the window closed and nothing cast, no HUD")

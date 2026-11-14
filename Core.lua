@@ -35,13 +35,13 @@ local BUTTON       = "OneClickFishButton"
 local KEY_CLICK    = "Key"   -- the mouse button the key's click is delivered as
 local FISHING      = 131474   -- the Fishing spell; its name is what the macro casts
 local FISHING_TOOL = 28       -- the fishing tool slot
-local SESSION_GAP  = 30 * 60  -- a cast this long after the last one starts a new session
 local PROFESSION   = Enum.ItemClass and Enum.ItemClass.Profession or 19
 local FISHING_SUB  = Enum.ItemProfessionSubclass and Enum.ItemProfessionSubclass.Fishing or 9
 local WEAPON       = Enum.ItemClass and Enum.ItemClass.Weapon or 2
 local POLE_SUB     = Enum.ItemWeaponSubclass and Enum.ItemWeaponSubclass.Fishingpole or 20
 
 ns.FISHING_TOOL = FISHING_TOOL
+ns.RESET_MIN, ns.RESET_MAX = 2, 120   -- minutes without a cast before the next one starts a new session
 
 -- The Fishing spells Retail casts, ice and void holes too; the event names the
 -- one that was cast, and any other is told by the channel's name.
@@ -93,9 +93,10 @@ function ns.IsEnabled() return db ~= nil and db.settings.enabled end
 --                theme= (a key of Skin.THEMES), windowScale= (the settings window) },
 --   headBefore = what was on the head before the hat, while the hat is on
 --   hud      = { show = "always" | "never", catches=, idle= (minutes without a cast before it goes),
+--                resetAfter= (minutes without a cast before the next one starts a new session),
 --                scale=, bgAlpha= (0 to 1), border=, locked= (the cast button too), point=, relPoint=, x=, y= },
 --   button   = { point=, relPoint=, x=, y=, scale= },   minimap = { angle= },
---   session  = { casts=, catches=, items=, market=, vendor=, source=, start=, last=,
+--   session  = { casts=, catches=, items=, market=, vendor=, source=, start=, last=, zone= (where it began),
 --                loot = { [itemID] = { link=, count=, value= } } },
 --   cvarBackup, soundBackup = what was there before a cast, while the cast is on
 -- ---------------------------------------------------------------------------
@@ -104,7 +105,7 @@ ns.defaults = {
 	settings = { enabled = true, autoEquip = true, fastLoot = true, chime = true, duck = true, musicVol = 0.15,
 		ambienceVol = 0.10, boostSFX = false, bgSound = true, showButton = true, minimap = true, lureAuto = false,
 		theme = "tide", windowScale = 1.3 },
-	hud = { show = "always", catches = true, idle = 5, scale = 1.0, bgAlpha = 0.8, border = true, locked = false,
+	hud = { show = "always", catches = true, idle = 5, resetAfter = 30, scale = 1.0, bgAlpha = 0.8, border = true, locked = false,
 		point = "CENTER", relPoint = "CENTER", x = 330, y = 20 },
 	button = { point = "CENTER", relPoint = "CENTER", x = 0, y = -140, scale = 1.0 },
 	minimap = { angle = 220 },
@@ -468,7 +469,7 @@ end
 
 -- key: a binding string ("SHIFT-F"), or nil to unbind. Whatever it did before, it does this now.
 function ns.SetKey(key)
-	if InCombatLockdown() then ns.Msg(L["Not in combat."]); return end
+	if InCombatLockdown() then ns.Msg(L["Can't change that in combat."]); return end
 	if key then
 		local taken = GetBindingAction(key)
 		if taken and taken ~= "" and taken ~= BINDING then
@@ -504,7 +505,8 @@ function ns.SetEnabled(on)
 end
 
 -- ---------------------------------------------------------------------------
--- The session: from the first cast, until a long pause or a reset
+-- The session: from the first cast, until a long pause, a zone change, a
+-- logout or a reset. A /reload keeps it.
 -- ---------------------------------------------------------------------------
 
 local function Notify()
@@ -516,15 +518,29 @@ function ns.ResetSession(quiet)
 	local s = db.session
 	for k, v in pairs(ns.defaults.session) do s[k] = v end
 	s.loot = {}
-	s.source, s.start, s.last = nil, nil, nil
+	s.source, s.start, s.last, s.zone = nil, nil, nil, nil
 	if not quiet then ns.Msg(L["Session reset."]) end
 	Notify()
 end
 
+-- The zone the player is in; nil while a loading screen has not told it yet.
+local function Zone()
+	local zone = GetRealZoneText()
+	if zone and zone ~= "" then return zone end
+end
+
+-- A session that began in another zone ends as soon as the player is out of it.
+local function CheckZone()
+	local s, zone = db.session, Zone()
+	if s.zone and zone and zone ~= s.zone then ns.ResetSession(true) end
+end
+
 local function BeginCast()
 	local s, now = db.session, time()
-	if s.last and now - s.last > SESSION_GAP then ns.ResetSession(true) end
+	if s.last and now - s.last > db.hud.resetAfter * 60 then ns.ResetSession(true) end
+	CheckZone()
 	s.start = s.start or now
+	s.zone = s.zone or Zone()
 	s.last = now
 	s.casts = s.casts + 1
 end
@@ -657,7 +673,8 @@ local function OnLoot()
 end
 
 local events = CreateFrame("Frame")
-for _, e in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "PLAYER_ENTERING_WORLD", "UPDATE_BINDINGS",
+for _, e in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
+	"UPDATE_BINDINGS",
 	"PLAYER_SOFT_INTERACT_CHANGED", "LOOT_READY", "LOOT_OPENED", "LOOT_CLOSED", "PLAYER_REGEN_ENABLED",
 	"PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED", "BAG_UPDATE_DELAYED" }) do
 	events:RegisterEvent(e)
@@ -690,11 +707,18 @@ events:SetScript("OnEvent", function(self, event, a1, a2, a3)
 		ns.HUD.Refresh()
 
 	elseif event == "PLAYER_ENTERING_WORLD" or event == "UPDATE_BINDINGS" then
+		if event == "PLAYER_ENTERING_WORLD" then
+			-- a login (a logout before it, or another character) starts over; a /reload does not
+			if a1 and not a2 then ns.ResetSession(true) else CheckZone() end
+		end
 		RefreshBinding()
 		if event == "UPDATE_BINDINGS" then
 			ns.RefreshOptions()
 			ns.Button.Refresh()   -- the key it shows
 		end
+
+	elseif event == "ZONE_CHANGED_NEW_AREA" then
+		CheckZone()
 
 	elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
 		OnChannelStart(a3)
